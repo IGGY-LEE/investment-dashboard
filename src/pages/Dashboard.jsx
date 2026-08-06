@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { LineChart, Line, ResponsiveContainer, Treemap, Tooltip as RechartsTooltip } from 'recharts'
 import { RefreshCw } from 'lucide-react'
 import ChartModal from '../components/ChartModal'
+import { getQuotes, getChartData } from '../api'
 
 const generateSparkline = (isUp) => {
   let val = 100;
@@ -194,49 +195,164 @@ export default function Dashboard() {
   const [selectedIndex, setSelectedIndex] = useState('S&P 500')
   
   const [topIndices, setTopIndices] = useState([
-    { name: '코스피', value: 2667.70, changeStr: '-0.30%', isUp: false },
-    { name: 'S&P 500', value: 5088.80, changeStr: '+1.20%', isUp: true },
-    { name: '상해종합', value: 2977.02, changeStr: '+0.55%', isUp: true },
-    { name: '원/달러', value: 1332.50, changeStr: '+2.00', isUp: true },
-    { name: '나스닥', value: 15996.82, changeStr: '+1.55%', isUp: true },
-    { name: '다우존스', value: 39131.53, changeStr: '+0.16%', isUp: true },
-    { name: '닛케이', value: 39233.71, changeStr: '+2.10%', isUp: true },
+    { name: '코스피', symbol: '^KS11', value: 2667.70, changeStr: '-0.30%', isUp: false, flash: null },
+    { name: 'S&P 500', symbol: '^GSPC', value: 5088.80, changeStr: '+1.20%', isUp: true, flash: null },
+    { name: '상해종합', symbol: '000001.SS', value: 2977.02, changeStr: '+0.55%', isUp: true, flash: null },
+    { name: '원/달러', symbol: 'KRW=X', value: 1332.50, changeStr: '+2.00%', isUp: true, flash: null },
+    { name: '나스닥', symbol: '^IXIC', value: 15996.82, changeStr: '+1.55%', isUp: true, flash: null },
+    { name: '다우존스', symbol: '^DJI', value: 39131.53, changeStr: '+0.16%', isUp: true, flash: null },
+    { name: '닛케이', symbol: '^N225', value: 39233.71, changeStr: '+2.10%', isUp: true, flash: null },
   ])
 
   const [marketCards, setMarketCards] = useState([
-    { name: 'S&P 500', value: 5088.80, changeStr: '+1.20%', isUp: true },
-    { name: '나스닥 (NASDAQ)', value: 15996.82, changeStr: '+1.55%', isUp: true },
-    { name: '다우존스 (Dow Jones)', value: 39131.53, changeStr: '+0.16%', isUp: true },
-    { name: '코스피 (KOSPI)', value: 2667.70, changeStr: '-0.30%', isUp: false },
-  ].map(d => ({ ...d, sparkline: generateSparkline(d.isUp) })))
+    { name: 'S&P 500', symbol: '^GSPC', value: 5088.80, changeStr: '+1.20%', isUp: true, sparkline: [] },
+    { name: '나스닥 (NASDAQ)', symbol: '^IXIC', value: 15996.82, changeStr: '+1.55%', isUp: true, sparkline: [] },
+    { name: '다우존스 (Dow Jones)', symbol: '^DJI', value: 39131.53, changeStr: '+0.16%', isUp: true, sparkline: [] },
+    { name: '코스피 (KOSPI)', symbol: '^KS11', value: 2667.70, changeStr: '-0.30%', isUp: false, sparkline: [] },
+  ])
+
+  const [detailedDataState, setDetailedDataState] = useState(detailedData)
+  const isMountedRef = useRef(true);
+
+  const HEATMAP_SYMBOL_MAP = {
+    '삼성전자': '005930.KS',
+    'SK하이닉스': '000660.KS',
+    'LG에너지솔루션': '373220.KS',
+    '삼성바이오로직스': '207940.KS',
+    '현대차': '005380.KS',
+    '기아': '000270.KS',
+    '셀트리온': '068270.KS',
+    'POSCO홀딩스': '005490.KS',
+    'KB금융': '105560.KS',
+    'NAVER': '035420.KS',
+    '에코프로비엠': '247540.KQ',
+    '알테오젠': '196170.KQ',
+    '에코프로': '086520.KQ',
+    'HLB': '028300.KQ',
+    '엔켐': '348370.KQ',
+    '리노공업': '058470.KQ',
+    '셀트리온제약': '068760.KQ',
+    'HPSP': '403870.KQ',
+    '레인보우로보틱스': '277810.KQ',
+    '클래시스': '214150.KQ',
+    'BRK.B': 'BRK-B'
+  };
+
+  const fetchRealTimeData = async () => {
+    setIsUpdating(true);
+    const indexSymbols = topIndices.map(t => t.symbol);
+    
+    let heatmapSymbols = [];
+    Object.values(detailedDataState).forEach(idxData => {
+      idxData.heatmap.forEach(h => {
+        const mapped = HEATMAP_SYMBOL_MAP[h.name] || h.name;
+        if (!heatmapSymbols.includes(mapped)) heatmapSymbols.push(mapped);
+      });
+    });
+
+    const allSymbols = [...new Set([...indexSymbols, ...heatmapSymbols])];
+    const quotes = await getQuotes(allSymbols);
+    
+    if (!isMountedRef.current || quotes.length === 0) {
+      setIsUpdating(false);
+      return;
+    }
+
+    setTopIndices(prev => prev.map(item => {
+      const quote = quotes.find(q => q.symbol === item.symbol);
+      if (!quote) return item;
+      
+      const newValue = quote.regularMarketPrice || item.value;
+      const changePct = quote.regularMarketChangePercent || 0;
+      const isUp = changePct >= 0;
+      const changeStr = `${isUp ? '+' : ''}${changePct.toFixed(2)}%`;
+      
+      let flash = null;
+      if (item.value !== 0 && item.value !== newValue) {
+        flash = newValue > item.value ? 'flash-up' : 'flash-down';
+      }
+      
+      return { ...item, value: newValue, changeStr, isUp, flash };
+    }));
+
+    setMarketCards(prev => prev.map(item => {
+      const quote = quotes.find(q => q.symbol === item.symbol);
+      if (!quote) return item;
+      
+      const newValue = quote.regularMarketPrice || item.value;
+      const changePct = quote.regularMarketChangePercent || 0;
+      const isUp = changePct >= 0;
+      const changeStr = `${isUp ? '+' : ''}${changePct.toFixed(2)}%`;
+      
+      const newSparkline = [...item.sparkline];
+      if (newSparkline.length > 0) {
+        newSparkline.shift();
+        newSparkline.push({ value: newValue });
+      }
+
+      return { ...item, value: newValue, changeStr, isUp, sparkline: newSparkline.length > 0 ? newSparkline : item.sparkline };
+    }));
+
+    setDetailedDataState(prev => {
+      const newState = { ...prev };
+      Object.keys(newState).forEach(idxKey => {
+        const newHeatmap = newState[idxKey].heatmap.map(h => {
+          const mapped = HEATMAP_SYMBOL_MAP[h.name] || h.name;
+          const quote = quotes.find(q => q.symbol === mapped);
+          if (quote) {
+            return {
+              ...h,
+              change: Number((quote.regularMarketChangePercent || 0).toFixed(2)),
+              symbol: mapped,
+              price: quote.regularMarketPrice
+            };
+          }
+          return h;
+        });
+        newState[idxKey] = { ...newState[idxKey], heatmap: newHeatmap };
+      });
+      return newState;
+    });
+
+    setLastUpdated(new Date().toLocaleTimeString('ko-KR'));
+    setIsUpdating(false);
+    
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        setTopIndices(prev => prev.map(item => ({ ...item, flash: null })));
+      }
+    }, 1000);
+  };
+
+  const fetchSparklines = async () => {
+    for (const card of marketCards) {
+      const chart = await getChartData(card.symbol, '1d', '1mo');
+      if (isMountedRef.current && chart.length > 0) {
+        setMarketCards(prev => prev.map(p => 
+          p.symbol === card.symbol ? { ...p, sparkline: chart } : p
+        ));
+      }
+    }
+  };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    fetchRealTimeData();
+    fetchSparklines();
+    
+    const intervalId = setInterval(fetchRealTimeData, 10000); // 10 seconds
+
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const handleUpdate = () => {
-    setIsUpdating(true)
-    setTimeout(() => {
-      const scramble = (val) => val * (1 + (Math.random() - 0.5) * 0.004);
-      
-      setTopIndices(prev => prev.map(item => ({
-        ...item,
-        value: scramble(item.value)
-      })))
-
-      setMarketCards(prev => prev.map(item => {
-        const newVal = scramble(item.value)
-        const isUp = newVal > item.value ? true : newVal < item.value ? false : item.isUp;
-        return {
-          ...item,
-          value: newVal,
-          isUp,
-          sparkline: [...item.sparkline.slice(1), { value: newVal }]
-        }
-      }))
-      
-      setLastUpdated(new Date().toLocaleTimeString('ko-KR'))
-      setIsUpdating(false)
-    }, 800)
+    if (!isUpdating) fetchRealTimeData();
   }
   
-  const currentData = detailedData[selectedIndex]
+  const currentData = detailedDataState[selectedIndex]
   const availableIndices = ['S&P 500', '나스닥', '다우존스', '코스피', '코스닥']
 
   return (
@@ -245,9 +361,9 @@ export default function Dashboard() {
       <div className="ticker-wrap" style={{ overflowX: 'auto' }}>
         <div style={{ display: 'flex' }}>
           {topIndices.map((idx, i) => (
-            <div key={i} className="ticker-item clickable" onClick={() => setSelectedItem({ name: idx.name, value: String(idx.value) })}>
+            <div key={i} className={`ticker-item clickable ${idx.flash || ''}`} onClick={() => setSelectedItem({ name: idx.name, symbol: idx.symbol, value: String(idx.value) })} style={{ transition: 'background-color 0.3s' }}>
               <span className="text-secondary" style={{ marginRight: '8px' }}>{idx.name}</span>
-              <span style={{ fontWeight: 'bold', marginRight: '8px' }}>{idx.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>
+              <span style={{ fontWeight: 'bold', marginRight: '8px' }}>{idx.value === 0 ? '로딩중...' : idx.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>
               <span className={idx.isUp ? 'text-positive' : 'text-negative'}>{idx.changeStr}</span>
             </div>
           ))}
@@ -278,7 +394,7 @@ export default function Dashboard() {
             key={idx} 
             className="card clickable" 
             style={{ marginBottom: '1rem', position: 'relative', overflow: 'hidden' }}
-            onClick={() => setSelectedItem({ name: data.name, value: String(data.value) })}
+            onClick={() => setSelectedItem({ name: data.name, symbol: data.symbol, value: String(data.value) })}
           >
             <div className="text-secondary" style={{ marginBottom: '0.25rem', fontSize: '0.875rem' }}>{data.name}</div>
             <div className="text-xl">{data.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</div>
@@ -359,7 +475,7 @@ export default function Dashboard() {
                 content={<TreemapCell />}
                 isAnimationActive={false}
                 onClick={(e) => {
-                  if (e && e.name) setSelectedItem({ name: e.name, value: '100' });
+                  if (e && e.name) setSelectedItem({ name: e.name, symbol: e.symbol || e.name, value: String(e.price || '100') });
                 }}
               >
                 <RechartsTooltip 

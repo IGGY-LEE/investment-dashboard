@@ -1,7 +1,8 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Compass, CalendarDays, TrendingUp, Pickaxe, Trophy, Banknote, Newspaper, Bitcoin, Layers, Briefcase, Puzzle } from 'lucide-react'
+import { LayoutDashboard, Compass, CalendarDays, TrendingUp, Pickaxe, Trophy, Banknote, Newspaper, Bitcoin, Layers, Briefcase, Puzzle, Search } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
+import Screener from './pages/Screener'
 import Strategy from './pages/Strategy'
 import Schedule from './pages/Schedule'
 import Macro from './pages/Macro'
@@ -13,10 +14,15 @@ import Crypto from './pages/Crypto'
 import ETF from './pages/ETF'
 import Portfolio from './pages/Portfolio'
 import Plugins from './pages/Plugins'
+import Login from './pages/Login'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { LogIn, LogOut } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
 import './index.css'
 
 const NAV_ITEMS = [
   { path: '/', label: '대시보드', icon: <LayoutDashboard size={20} /> },
+  { path: '/screener', label: '종목 스크리너', icon: <Search size={20} /> },
   { path: '/strategy', label: 'AI 투자 전략', icon: <Compass size={20} /> },
   { path: '/schedule', label: '주요 일정', icon: <CalendarDays size={20} /> },
   { path: '/news', label: '주요 뉴스', icon: <Newspaper size={20} /> },
@@ -30,8 +36,14 @@ const NAV_ITEMS = [
   { path: '/plugins', label: 'AI 스킬/플러그인', icon: <Puzzle size={20} /> },
 ]
 
+function PrivateRoute({ children }) {
+  const { currentUser } = useAuth()
+  return currentUser ? children : <Navigate to="/login" />
+}
+
 function Layout({ children }) {
   const location = useLocation()
+  const { currentUser, logout } = useAuth()
   
   const getPageTitle = () => {
     const current = NAV_ITEMS.find(item => item.path === location.pathname)
@@ -42,8 +54,11 @@ function Layout({ children }) {
     <div className="app-container">
       {/* PC Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-header">
-          InvestBoard
+        <div className="sidebar-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div>InvestBoard</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem', fontWeight: 'normal' }}>
+            designed by IGGY
+          </div>
         </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
@@ -57,12 +72,31 @@ function Layout({ children }) {
             </NavLink>
           ))}
         </nav>
+        
+        {/* Auth Button */}
+        <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+          {currentUser ? (
+            <button onClick={logout} className="nav-item" style={{ width: '100%', justifyContent: 'flex-start' }}>
+              <LogOut size={20} />
+              <span>로그아웃</span>
+            </button>
+          ) : (
+            <NavLink to="/login" className="nav-item">
+              <LogIn size={20} />
+              <span>로그인</span>
+            </NavLink>
+          )}
+        </div>
       </aside>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Mobile Header */}
-        <header className="mobile-header">
-          {getPageTitle()}
+        <header className="mobile-header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <div>{getPageTitle()}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 'normal', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.2' }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '0.8rem' }}>InvestBoard</span>
+            <span>designed by IGGY</span>
+          </div>
         </header>
 
         {/* Main Content */}
@@ -90,12 +124,15 @@ function Layout({ children }) {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/strategy" element={<Strategy />} />
-          <Route path="/schedule" element={<Schedule />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/screener" element={<Screener />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/strategy" element={<PrivateRoute><Strategy /></PrivateRoute>} />
+            <Route path="/schedule" element={<Schedule />} />
           <Route path="/news" element={<News />} />
           <Route path="/macro" element={<Macro />} />
           <Route path="/exchange" element={<ExchangeRates />} />
@@ -103,11 +140,12 @@ function App() {
           <Route path="/crypto" element={<Crypto />} />
           <Route path="/etf" element={<ETF />} />
           <Route path="/leaders" element={<Watchlist />} />
-          <Route path="/plugins" element={<Plugins />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+            <Route path="/plugins" element={<Plugins />} />
+            <Route path="/portfolio" element={<PrivateRoute><Portfolio /></PrivateRoute>} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 

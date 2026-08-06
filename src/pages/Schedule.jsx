@@ -47,6 +47,16 @@ export default function Schedule() {
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [selectedDayEvents, setSelectedDayEvents] = useState(null);
 
+  const getMacroDefaultValue = (title) => {
+    if (title.includes('금리') || title.includes('FOMC') || title.includes('금통위') || title.includes('ECB')) return { value: '5.25%', change: '0.00%p' };
+    if (title.includes('CPI') || title.includes('PCE')) return { value: '+3.1% (YoY)', change: '-0.1%p' };
+    if (title.includes('고용')) return { value: '206K', change: '+12K' };
+    if (title.includes('PMI')) return { value: '48.5', change: '-1.2' };
+    if (title.includes('GDP')) return { value: '2.4%', change: '+1.0%p' };
+    if (title.includes('실적')) return { value: '발표대기', change: null };
+    return { value: '-', change: null };
+  };
+
   const prevMonth = () => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() - 1);
@@ -175,7 +185,8 @@ export default function Schedule() {
                 {currentMonthSchedules.length > 0 ? currentMonthSchedules.map((item, idx) => (
                   <tr key={idx} className="clickable" onClick={(e) => {
                     if (e.target.closest('a')) return;
-                    setSelectedItem({ name: item.title, value: '100' });
+                    const defaultVals = getMacroDefaultValue(item.title);
+                    setSelectedItem({ name: item.title, value: defaultVals.value, change: defaultVals.change });
                   }}>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: '500' }}>{item.date}</td>
                     <td>
@@ -216,7 +227,11 @@ export default function Schedule() {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {selectedDayEvents.events.map((evt, idx) => (
-                <div key={idx} className="card clickable" style={{ marginBottom: 0 }} onClick={() => { setSelectedDayEvents(null); setSelectedItem({ name: evt.title, value: '100' }); }}>
+                <div key={idx} className="card clickable" style={{ marginBottom: 0 }} onClick={() => { 
+                  setSelectedDayEvents(null); 
+                  const defaultVals = getMacroDefaultValue(evt.title);
+                  setSelectedItem({ name: evt.title, value: defaultVals.value, change: defaultVals.change }); 
+                }}>
                   <div className="flex-between">
                     <div>
                       <span className="badge" style={{ backgroundColor: getTypeColor(evt.type), color: 'white', marginBottom: '0.5rem', display: 'inline-block' }}>{evt.type}</span>

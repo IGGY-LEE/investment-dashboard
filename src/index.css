@@ -137,8 +137,16 @@ button {
   background-color: var(--surface-color);
   border-top: 1px solid var(--border-color);
   z-index: 50;
-  justify-content: space-around;
+  justify-content: flex-start;
   align-items: center;
+  overflow-x: auto;
+  white-space: nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.bottom-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .bottom-nav-item {
@@ -147,7 +155,9 @@ button {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 72px;
+  padding: 0 0.5rem;
   height: 100%;
   color: var(--text-secondary);
   font-size: 0.7rem;
@@ -465,3 +475,23 @@ button {
   animation: spin 1s linear infinite;
 }
 
+@keyframes slideUp {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+
+@keyframes flash-up {
+  0% { background-color: rgba(16, 185, 129, 0.5); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-down {
+  0% { background-color: rgba(239, 68, 68, 0.5); }
+  100% { background-color: transparent; }
+}
+.flash-up {
+  animation: flash-up 1s ease-out;
+}
+.flash-down {
+  animation: flash-down 1s ease-out;
+}

@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react'
-import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { ExternalLink, ChevronDown, ChevronUp, Trash2, Plus, X } from 'lucide-react'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from '../firebase'
+import { useAuth } from '../contexts/AuthContext'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import ChartModal from '../components/ChartModal'
+import { getQuotes } from '../api'
 
 const generateWatchlist = () => {
   const data = {
@@ -24,6 +28,10 @@ const generateWatchlist = () => {
       const name = match ? match[1] : itemStr;
       const ticker = match ? match[2] : '';
       
+      let symbol = ticker;
+      if (group === '코스피') symbol += '.KS';
+      else if (group === '코스닥') symbol += '.KQ';
+      
       const isUp = Math.random() > 0.4;
       const priceNum = group.includes('코스') ? (20000 + Math.floor(Math.random() * 150000)) : (50 + Math.floor(Math.random() * 500));
       const pricePrefix = group.includes('코스') ? '' : '$';
@@ -34,6 +42,7 @@ const generateWatchlist = () => {
         group,
         name,
         ticker,
+        symbol,
         price: `${pricePrefix}${priceNum.toLocaleString(undefined, {minimumFractionDigits: group.includes('코스')?0:2})}${priceSuffix}`,
         change: `${isUp ? '+' : '-'}${(Math.random() * 3).toFixed(2)}%`,
         isUp,
@@ -53,12 +62,139 @@ const generateWatchlist = () => {
 const initialWatchlist = generateWatchlist();
 
 export default function Watchlist() {
+  const { currentUser } = useAuth()
   const [expandedId, setExpandedId] = useState(null)
-  const [watchlist, setWatchlist] = useState(initialWatchlist)
+  const [watchlist, setWatchlist] = useState([])
   const [activeTab, setActiveTab] = useState('전체 현황')
   const [selectedItem, setSelectedItem] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const isMountedRef = useRef(true)
+
+  // Add Item Modal States
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newItem, setNewItem] = useState({ group: 'S&P 500', name: '', ticker: '' })
+
+  // Load from Firebase
+  useEffect(() => {
+    async function loadData() {
+      if (!currentUser) {
+        setWatchlist(initialWatchlist);
+        setLoading(false);
+        return;
+      }
+      try {
+        const docRef = doc(db, 'users', currentUser.uid, 'data', 'watchlist');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setWatchlist(docSnap.data().items || []);
+        } else {
+          setWatchlist(initialWatchlist);
+          await setDoc(docRef, { items: initialWatchlist });
+        }
+      } catch (err) {
+        console.error(err);
+        setWatchlist(initialWatchlist);
+      }
+      setLoading(false);
+    }
+    loadData();
+  }, [currentUser]);
+
+  // Sync to Firebase
+  const syncToFirebase = async (newList) => {
+    setWatchlist(newList);
+    if (currentUser) {
+      try {
+        const docRef = doc(db, 'users', currentUser.uid, 'data', 'watchlist');
+        await setDoc(docRef, { items: newList });
+      } catch (err) {
+        console.error('Failed to sync watchlist to Firebase', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    const fetchRealData = async () => {
+      const symbols = watchlist.map(w => w.symbol);
+      const quotes = await getQuotes([...new Set(symbols)]);
+      
+      if (!isMountedRef.current || quotes.length === 0) return;
+      
+      setWatchlist(prev => prev.map(item => {
+        const quote = quotes.find(q => q.symbol === item.symbol);
+        if (!quote) return item;
+
+        const newPrice = quote.regularMarketPrice || parseFloat(String(item.price).replace(/[^0-9.]/g, '')) || 0;
+        const changePct = quote.regularMarketChangePercent || 0;
+        const isUp = changePct >= 0;
+        const pricePrefix = item.group.includes('코스') ? '' : '$';
+        const priceSuffix = item.group.includes('코스') ? '원' : '';
+        const priceStr = `${pricePrefix}${newPrice.toLocaleString(undefined, {minimumFractionDigits: item.group.includes('코스') ? 0 : 2, maximumFractionDigits: item.group.includes('코스') ? 0 : 2})}${priceSuffix}`;
+        const changeStr = `${isUp ? '+' : ''}${changePct.toFixed(2)}%`;
+        
+        return {
+          ...item,
+          price: priceStr,
+          change: changeStr,
+          isUp,
+          rawPrice: newPrice
+        };
+      }));
+    };
+
+    fetchRealData();
+    const interval = setInterval(fetchRealData, 10000);
+
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+    }
+  }, [loading, watchlist.length]);
 
   const tabs = ['전체 현황', 'S&P 500', '나스닥', '다우존스', '코스피', '코스닥']
+
+  const handleRemoveItem = (id) => {
+    if (window.confirm('정말 삭제하시겠습니까?')) {
+      const newList = watchlist.filter(item => item.id !== id);
+      syncToFirebase(newList);
+    }
+  };
+
+  const handleAddItem = () => {
+    if (!newItem.name || !newItem.ticker) {
+      alert("종목명과 티커를 입력해주세요.");
+      return;
+    }
+    
+    let symbol = newItem.ticker.toUpperCase();
+    if (newItem.group === '코스피') symbol += '.KS';
+    else if (newItem.group === '코스닥') symbol += '.KQ';
+
+    const pricePrefix = newItem.group.includes('코스') ? '' : '$';
+    const priceSuffix = newItem.group.includes('코스') ? '원' : '';
+
+    const newEntry = {
+      id: Date.now(), // Generate unique ID
+      group: newItem.group,
+      name: newItem.name,
+      ticker: newItem.ticker.toUpperCase(),
+      symbol: symbol,
+      price: `${pricePrefix}0${priceSuffix}`,
+      change: '0.00%',
+      isUp: true,
+      memo: '',
+      targetPrice: '-',
+      analystRating: '-',
+      recentNews: []
+    };
+    
+    const newList = [...watchlist, newEntry];
+    syncToFirebase(newList);
+    setNewItem({ group: 'S&P 500', name: '', ticker: '' });
+    setShowAddModal(false);
+  };
 
   const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const textColor = isDarkMode ? '#94a3b8' : '#64748b';
@@ -68,12 +204,17 @@ export default function Watchlist() {
   const m7Tickers = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'GOOGL', 'TSLA'];
   const m7Data = watchlist
     .filter(w => m7Tickers.includes(w.ticker))
-    .map(w => ({
-      name: w.ticker,
-      changePercent: parseFloat(w.change.replace('%', '')),
-      fullName: w.name,
-      price: w.price
-    }))
+    .reduce((acc, curr) => {
+      if (!acc.find(item => item.name === curr.ticker)) {
+        acc.push({
+          name: curr.ticker,
+          changePercent: parseFloat(curr.change.replace('%', '').replace('+', '')),
+          fullName: curr.name,
+          price: curr.price
+        });
+      }
+      return acc;
+    }, [])
     .sort((a, b) => b.changePercent - a.changePercent);
 
   const toggleExpand = (id) => {
@@ -81,12 +222,17 @@ export default function Watchlist() {
   }
 
   const handleMemoChange = (id, newMemo) => {
-    setWatchlist(watchlist.map(item => item.id === id ? { ...item, memo: newMemo } : item))
+    const newList = watchlist.map(item => item.id === id ? { ...item, memo: newMemo } : item);
+    syncToFirebase(newList);
   }
 
   const filteredList = activeTab === '전체 현황' 
     ? [] 
     : watchlist.filter(item => item.group === activeTab)
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>데이터를 불러오는 중...</div>;
+  }
 
   return (
     <div>
@@ -97,8 +243,12 @@ export default function Watchlist() {
             각 지수별 시가총액 상위 10개 핵심 주도주들의 시세와 변동성을 확인하세요.
           </div>
         </div>
-        <button className="badge positive clickable" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-          + 종목 추가
+        <button 
+          className="badge positive clickable" 
+          onClick={() => setShowAddModal(true)}
+          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+        >
+          <Plus size={16} /> 관심 종목 추가
         </button>
       </div>
 
@@ -213,7 +363,7 @@ export default function Watchlist() {
           <div key={item.id} className="card" style={{ marginBottom: 0, padding: 0, overflow: 'hidden' }}>
             <div 
               style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer' }}
-              onClick={() => setSelectedItem({ name: item.name, value: item.price.replace(/[^0-9.]/g, '') })}
+              onClick={() => setSelectedItem({ name: item.name, symbol: item.symbol, value: item.price.replace(/[^0-9.]/g, '') })}
             >
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -242,6 +392,13 @@ export default function Watchlist() {
                 >
                   {expandedId === item.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   상세 정보
+                </button>
+                <button 
+                  className="badge neutral clickable" 
+                  onClick={() => handleRemoveItem(item.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', height: 'fit-content', border: '1px solid var(--negative-color)', color: 'var(--negative-color)' }}
+                >
+                  <Trash2 size={16} /> 삭제
                 </button>
               </div>
             </div>
@@ -297,6 +454,62 @@ export default function Watchlist() {
           </div>
         ))}
       </div>
+      )}
+
+      {/* Add Modal */}
+      {showAddModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="card" style={{ width: '90%', maxWidth: '400px', position: 'relative' }}>
+            <button onClick={() => setShowAddModal(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+              <X size={24} />
+            </button>
+            <h2 className="card-title" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Plus size={20} color="var(--accent-color)" /> 관심 종목 추가
+            </h2>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem' }}>그룹 탭</label>
+                <select 
+                  value={newItem.group} 
+                  onChange={e => setNewItem({...newItem, group: e.target.value})}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                >
+                  {tabs.filter(t => t !== '전체 현황').map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem' }}>종목명</label>
+                <input 
+                  type="text" 
+                  placeholder="예: Tesla, 카카오" 
+                  value={newItem.name} 
+                  onChange={e => setNewItem({...newItem, name: e.target.value})} 
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem' }}>야후 파이낸스 티커</label>
+                <input 
+                  type="text" 
+                  placeholder="예: TSLA, 035720" 
+                  value={newItem.ticker} 
+                  onChange={e => setNewItem({...newItem, ticker: e.target.value})} 
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>한국 주식은 6자리 숫자만 입력하세요 (자동으로 .KS/.KQ가 붙습니다).</div>
+              </div>
+            </div>
+            <button 
+              onClick={handleAddItem}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: 'var(--accent-color)', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              추가하기
+            </button>
+          </div>
+        </div>
       )}
 
       <ChartModal 

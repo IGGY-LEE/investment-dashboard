@@ -1,29 +1,86 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts'
 import { Activity, Flame, BarChart2, ShieldAlert } from 'lucide-react'
 import ChartModal from '../components/ChartModal'
+import { getQuotes } from '../api'
 
 export default function Crypto() {
   const [selectedItem, setSelectedItem] = useState(null)
   const [activeTab, setActiveTab] = useState('전체 현황')
   
-  const cryptoData = {
+  const [cryptoData, setCryptoData] = useState({
     '메이저 (Layer 1)': [
-      { name: '비트코인 (BTC)', price: '$64,250.00', change: '+2.5%', isUp: true, desc: '반감기 이후 완만한 우상향 흐름' },
-      { name: '이더리움 (ETH)', price: '$3,450.00', change: '+1.2%', isUp: true, desc: '현물 ETF 승인 기대감으로 매수세 유입' },
-      { name: '솔라나 (SOL)', price: '$145.20', change: '-0.8%', isUp: false, desc: '단기 급등에 따른 차익 실현 매물 출회' },
+      { name: '비트코인 (BTC)', symbol: 'BTC-USD', price: 62450.20, change: '+1.2%', isUp: true, desc: '반감기 이후 완만한 우상향 흐름', flash: null },
+      { name: '이더리움 (ETH)', symbol: 'ETH-USD', price: 3120.40, change: '+2.4%', isUp: true, desc: '현물 ETF 승인 기대감으로 매수세 유입', flash: null },
+      { name: '솔라나 (SOL)', symbol: 'SOL-USD', price: 145.30, change: '-1.5%', isUp: false, desc: '단기 급등에 따른 차익 실현 매물 출회', flash: null },
     ],
     '디파이 (DeFi)': [
-      { name: '체인링크 (LINK)', price: '$18.50', change: '+4.2%', isUp: true, desc: 'RWA(실물자산 토큰화) 테마 주도' },
-      { name: '유니스왑 (UNI)', price: '$11.20', change: '-2.1%', isUp: false, desc: 'SEC 규제 우려로 투자 심리 위축' },
-      { name: '메이커 (MKR)', price: '$2,850.00', change: '+1.5%', isUp: true, desc: '프로토콜 수익 급증에 따른 토큰 소각' },
+      { name: '체인링크 (LINK)', symbol: 'LINK-USD', price: 18.25, change: '+4.1%', isUp: true, desc: 'RWA(실물자산 토큰화) 테마 주도', flash: null },
+      { name: '에이브 (AAVE)', symbol: 'AAVE-USD', price: 95.60, change: '-0.8%', isUp: false, desc: '가상자산 대출 프로토콜 성장세', flash: null },
+      { name: '메이커 (MKR)', symbol: 'MKR-USD', price: 2940.00, change: '+1.5%', isUp: true, desc: '프로토콜 수익 급증에 따른 토큰 소각', flash: null },
     ],
     '밈 코인 (Meme)': [
-      { name: '도지코인 (DOGE)', price: '$0.15', change: '+8.5%', isUp: true, desc: '일론 머스크의 X(트위터) 결제 도입 루머' },
-      { name: '페페 (PEPE)', price: '$0.000008', change: '+15.2%', isUp: true, desc: '바이낸스 상장 이후 거래량 폭발' },
-      { name: '시바이누 (SHIB)', price: '$0.00002', change: '-1.2%', isUp: false, desc: '과열 양상 진정 후 조정을 받는 중' },
+      { name: '도지코인 (DOGE)', symbol: 'DOGE-USD', price: 0.154, change: '+5.2%', isUp: true, desc: '일론 머스크의 X(트위터) 결제 도입 루머', flash: null },
+      { name: '시바이누 (SHIB)', symbol: 'SHIB-USD', price: 0.000024, change: '-2.1%', isUp: false, desc: '과열 양상 진정 후 조정을 받는 중', flash: null },
+      { name: '페페 (PEPE)', symbol: 'PEPE24478-USD', price: 0.000007, change: '+15.0%', isUp: true, desc: '거래량 폭발', flash: null },
     ]
-  }
+  });
+
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    const fetchRealData = async () => {
+      const symbols = Object.values(cryptoData).flat().map(c => c.symbol);
+      const quotes = await getQuotes(symbols);
+      
+      if (!isMountedRef.current || quotes.length === 0) return;
+      
+      setCryptoData(prev => {
+        const newData = { ...prev };
+        for (const category in newData) {
+          newData[category] = newData[category].map(item => {
+            const quote = quotes.find(q => q.symbol === item.symbol);
+            if (!quote) return item;
+
+            const newPrice = quote.regularMarketPrice || item.price;
+            const changePct = quote.regularMarketChangePercent || 0;
+            const isUp = changePct >= 0;
+            const change = `${isUp ? '+' : ''}${changePct.toFixed(2)}%`;
+            
+            let flash = null;
+            if (item.price !== 0 && item.price !== newPrice) {
+              flash = newPrice > item.price ? 'flash-up' : 'flash-down';
+            }
+            
+            return { ...item, price: newPrice, change, isUp, flash };
+          });
+        }
+        return newData;
+      });
+      
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          setCryptoData(prev => {
+            const cleared = { ...prev };
+            for (const category in cleared) {
+              cleared[category] = cleared[category].map(item => ({ ...item, flash: null }));
+            }
+            return cleared;
+          });
+        }
+      }, 1000);
+    };
+
+    fetchRealData();
+    const interval = setInterval(fetchRealData, 10000);
+
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+    }
+  }, []);
 
   const dominanceData = [
     { name: 'BTC', value: 54.2, color: '#f59e0b' },
@@ -142,12 +199,14 @@ export default function Crypto() {
       ) : (
         <div className="grid-3" style={{ marginTop: '1.5rem' }}>
           {cryptoData[activeTab].map((item, idx) => (
-            <div key={idx} className="card clickable" onClick={() => setSelectedItem({ name: item.name, value: item.price })}>
+            <div key={idx} className={`card clickable ${item.flash || ''}`} onClick={() => setSelectedItem({ name: item.name, value: item.price, symbol: item.symbol })} style={{ transition: 'background-color 0.3s' }}>
               <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
                 <span style={{ fontWeight: 'bold' }}>{item.name}</span>
                 <span className={`badge ${item.isUp ? 'positive' : 'negative'}`}>{item.change}</span>
               </div>
-              <div className="text-2xl" style={{ marginBottom: '1rem' }}>{item.price}</div>
+              <div className="text-2xl" style={{ marginBottom: '1rem' }}>
+                {item.price === 0 ? '로딩중...' : `$${Number(item.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}`}
+              </div>
               <div className="text-secondary" style={{ fontSize: '0.875rem', lineHeight: '1.4' }}>
                 {item.desc}
               </div>

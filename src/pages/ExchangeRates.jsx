@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { getQuotes } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { AlertCircle, TrendingUp } from 'lucide-react'
 import ChartModal from '../components/ChartModal'
@@ -23,28 +24,88 @@ export default function ExchangeRates() {
   const [selectedItem, setSelectedItem] = useState(null)
   const [activeTab, setActiveTab] = useState('전체 현황')
 
-  const ratesData = {
+  const [ratesData, setRatesData] = useState({
     '주요 통화': [
-      { name: '원/달러 환율 (USD/KRW)', price: '1,385.50', change: '+2.10', isUp: true },
-      { name: '원/엔 환율 (JPY/KRW 100)', price: '875.40', change: '+1.50', isUp: true },
-      { name: '원/유로 환율 (EUR/KRW)', price: '1,502.30', change: '+3.20', isUp: true },
-      { name: '원/위안 환율 (CNY/KRW)', price: '190.85', change: '-0.15', isUp: false },
+      { name: '원/달러 환율 (USD/KRW)', symbol: 'KRW=X', price: '1,385.50', change: '+2.10', isUp: true },
+      { name: '원/엔 환율 (JPY/KRW 100)', symbol: 'JPYKRW=X', price: '875.40', change: '+1.50', isUp: true },
+      { name: '원/유로 환율 (EUR/KRW)', symbol: 'EURKRW=X', price: '1,502.30', change: '+3.20', isUp: true },
+      { name: '원/위안 환율 (CNY/KRW)', symbol: 'CNYKRW=X', price: '190.85', change: '-0.15', isUp: false },
     ],
     '이종 통화': [
-      { name: '엔/달러 환율 (USD/JPY)', price: '158.20', change: '-0.45', isUp: false },
-      { name: '유로/달러 환율 (EUR/USD)', price: '1.0850', change: '+0.0020', isUp: true },
-      { name: '파운드/달러 환율 (GBP/USD)', price: '1.2750', change: '-0.0015', isUp: false },
-      { name: '달러/위안 환율 (USD/CNY)', price: '7.2550', change: '+0.0150', isUp: true },
+      { name: '엔/달러 환율 (USD/JPY)', symbol: 'JPY=X', price: '158.20', change: '-0.45', isUp: false },
+      { name: '유로/달러 환율 (EUR/USD)', symbol: 'EURUSD=X', price: '1.0850', change: '+0.0020', isUp: true },
+      { name: '파운드/달러 환율 (GBP/USD)', symbol: 'GBPUSD=X', price: '1.2750', change: '-0.0015', isUp: false },
+      { name: '달러/위안 환율 (USD/CNY)', symbol: 'CNY=X', price: '7.2550', change: '+0.0150', isUp: true },
     ],
     '글로벌 인덱스': [
-      { name: '달러 인덱스 (DXY)', price: '104.25', change: '+0.15', isUp: true },
-      { name: '아시아 달러 인덱스 (ADXY)', price: '98.50', change: '-0.20', isUp: false },
+      { name: '달러 인덱스 (DXY)', symbol: 'DX-Y.NYB', price: '104.25', change: '+0.15', isUp: true },
     ],
     '기타 신흥국': [
-      { name: '달러/인도 루피 (USD/INR)', price: '83.50', change: '+0.10', isUp: true },
-      { name: '달러/브라질 헤알 (USD/BRL)', price: '5.1500', change: '-0.0200', isUp: false },
+      { name: '달러/인도 루피 (USD/INR)', symbol: 'INR=X', price: '83.50', change: '+0.10', isUp: true },
+      { name: '달러/브라질 헤알 (USD/BRL)', symbol: 'BRL=X', price: '5.1500', change: '-0.0200', isUp: false },
     ]
-  }
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+      const allSymbols = [];
+      Object.values(ratesData).forEach(group => {
+        group.forEach(item => {
+          if (item.symbol) allSymbols.push(item.symbol);
+        });
+      });
+
+      const quotes = await getQuotes([...new Set(allSymbols)]);
+      
+      if (quotes.length > 0) {
+        setRatesData(prev => {
+          const newData = { ...prev };
+          Object.keys(newData).forEach(key => {
+            newData[key] = newData[key].map(item => {
+              const q = quotes.find(q => q.symbol === item.symbol);
+              if (q) {
+                // JPY/KRW is usually quoted as 100 JPY to KRW in Korea, Yahoo gives 1 JPY to KRW
+                let price = q.regularMarketPrice;
+                let change = q.regularMarketChange;
+                if (item.symbol === 'JPYKRW=X') {
+                  price *= 100;
+                  change *= 100;
+                }
+                
+                // Format price based on magnitude
+                let priceStr = price.toLocaleString(undefined, {
+                  minimumFractionDigits: price < 10 ? 4 : 2,
+                  maximumFractionDigits: price < 10 ? 4 : 2
+                });
+                
+                let changeStr = change.toLocaleString(undefined, {
+                  minimumFractionDigits: change < 1 ? 4 : 2,
+                  maximumFractionDigits: change < 1 ? 4 : 2
+                });
+                if (change > 0) changeStr = '+' + changeStr;
+
+                return {
+                  ...item,
+                  price: priceStr,
+                  change: changeStr,
+                  isUp: change >= 0,
+                  rawPrice: price
+                };
+              }
+              return item;
+            });
+          });
+          return newData;
+        });
+      }
+      setIsLoading(false);
+    }
+    
+    fetchData();
+  }, []);
 
   const tabs = ['전체 현황', ...Object.keys(ratesData)]
 
@@ -55,12 +116,15 @@ export default function ExchangeRates() {
   return (
     <div>
       <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
-        <div>
-          <h1 className="page-title" style={{ margin: 0 }}>환율 (Exchange Rates)</h1>
-          <div className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
-            원/달러 환율 및 주요국 이종 통화 간의 실시간 환율 동향을 파악하세요.
+          <div className="flex-between">
+            <div>
+              <h1 className="page-title" style={{ margin: 0 }}>환율 (Exchange Rates)</h1>
+              <div className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                원/달러 환율 및 주요국 이종 통화 간의 실시간 환율 동향을 파악하세요.
+              </div>
+            </div>
+            {isLoading && <div className="text-secondary" style={{ fontSize: '0.875rem' }}>실시간 업데이트 중...</div>}
           </div>
-        </div>
       </div>
 
       <div className="tabs" style={{ overflowX: 'auto', display: 'flex', gap: '0.5rem', paddingBottom: '0.5rem' }}>
@@ -83,8 +147,8 @@ export default function ExchangeRates() {
             <div className="flex-between" style={{ marginBottom: '1rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}>원/달러 환율 (USD/KRW) 최근 1년 추이</h2>
               <div style={{ display: 'flex', alignItems: 'flex-end', flexDirection: 'column' }}>
-                <span className="text-2xl" style={{ fontWeight: 'bold' }}>1,385.50</span>
-                <span className="text-positive text-sm">+2.10 (+0.15%)</span>
+                <span className="text-2xl" style={{ fontWeight: 'bold' }}>{ratesData['주요 통화'][0].price}</span>
+                <span className={ratesData['주요 통화'][0].isUp ? 'text-positive text-sm' : 'text-negative text-sm'}>{ratesData['주요 통화'][0].change}</span>
               </div>
             </div>
             
@@ -119,23 +183,23 @@ export default function ExchangeRates() {
                     <tr>
                       <td style={{ fontWeight: 'bold', padding: '0.5rem' }}>USD</td>
                       <td style={{ textAlign: 'right', padding: '0.5rem' }}>1.000</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>0.922</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>158.20</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem', color: 'var(--accent-color)', fontWeight: 'bold' }}>1,385.50</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>{(1/(ratesData['이종 통화'].find(i=>i.symbol==='EURUSD=X')?.rawPrice || 1.085)).toFixed(3)}</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>{(ratesData['이종 통화'].find(i=>i.symbol==='JPY=X')?.rawPrice || 158.20).toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem', color: 'var(--accent-color)', fontWeight: 'bold' }}>{ratesData['주요 통화'][0].price}</td>
                     </tr>
                     <tr>
                       <td style={{ fontWeight: 'bold', padding: '0.5rem' }}>EUR</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>1.085</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>{(ratesData['이종 통화'].find(i=>i.symbol==='EURUSD=X')?.rawPrice || 1.085).toFixed(3)}</td>
                       <td style={{ textAlign: 'right', padding: '0.5rem' }}>1.000</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>171.65</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>1,502.30</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>-</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>{ratesData['주요 통화'].find(i=>i.symbol==='EURKRW=X')?.price || '1,502.30'}</td>
                     </tr>
                     <tr>
                       <td style={{ fontWeight: 'bold', padding: '0.5rem' }}>JPY (100)</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>0.632</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>0.582</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>-</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>-</td>
                       <td style={{ textAlign: 'right', padding: '0.5rem' }}>100.0</td>
-                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>875.40</td>
+                      <td style={{ textAlign: 'right', padding: '0.5rem' }}>{ratesData['주요 통화'].find(i=>i.symbol==='JPYKRW=X')?.price || '875.40'}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -173,7 +237,7 @@ export default function ExchangeRates() {
             <div 
               key={idx} 
               className="card clickable" 
-              onClick={() => setSelectedItem({ name: item.name, value: item.price, change: (item.isUp ? '+' : '') + item.change })}
+              onClick={() => setSelectedItem({ name: item.name, value: item.price, change: (item.isUp ? '+' : '') + item.change, symbol: item.symbol })}
             >
               <h2 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{item.name}</h2>
               <div className="flex-between">

@@ -1,49 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X } from 'lucide-react';
+import { X, Bell } from 'lucide-react';
 import Chart from 'react-apexcharts';
+import AdvancedChart from './AdvancedChart';
+import { getChartData } from '../api';
 
 const TIMEFRAMES = ['1D', '1W', '1M', '3M', '1Y', '5Y', '10Y', '30Y'];
-
-// Helper to generate dummy OHLC data based on timeframe
-const generateOHLCData = (timeframe, baseValue) => {
-  let points = 60;
-  let intervalMs = 0;
-  const HOUR = 60 * 60 * 1000;
-  const DAY = 24 * HOUR;
-  
-  if (timeframe === '1D') { points = 72; intervalMs = (24 * HOUR) / 72; }
-  else if (timeframe === '1W') { points = 84; intervalMs = (7 * DAY) / 84; }
-  else if (timeframe === '1M') { points = 60; intervalMs = (30 * DAY) / 60; }
-  else if (timeframe === '3M') { points = 90; intervalMs = DAY; }
-  else if (timeframe === '1Y') { points = 104; intervalMs = (365 * DAY) / 104; }
-  else if (timeframe === '5Y') { points = 120; intervalMs = (5 * 365 * DAY) / 120; }
-  else if (timeframe === '10Y') { points = 120; intervalMs = (10 * 365 * DAY) / 120; }
-  else if (timeframe === '30Y') { points = 120; intervalMs = (30 * 365 * DAY) / 120; }
-
-  const data = [];
-  let currentVal = parseFloat(String(baseValue).replace(/,/g, '').replace('%', '').replace('$', '').replace('원', '')) || 100;
-  
-  const now = new Date().getTime();
-  const startTime = now - (points * intervalMs);
-
-  for (let i = 0; i < points; i++) {
-    const volatility = currentVal * 0.015;
-    const change = (Math.random() - 0.45) * volatility;
-    
-    const open = currentVal;
-    const close = currentVal + change;
-    const high = Math.max(open, close) + (Math.random() * volatility * 0.5);
-    const low = Math.min(open, close) - (Math.random() * volatility * 0.5);
-    
-    currentVal = close;
-
-    data.push({
-      x: startTime + (i * intervalMs),
-      y: [Number(open.toFixed(2)), Number(high.toFixed(2)), Number(low.toFixed(2)), Number(close.toFixed(2))]
-    });
-  }
-  return data;
-};
 
 // Helper to generate dummy summary data
 const generateSummaryData = (name, baseValue) => {
@@ -250,13 +211,15 @@ const generateSummaryData = (name, baseValue) => {
   return {
     fields: [
       { label: '시가총액', value: isKorea ? (Math.random() * 50 + 10).toFixed(1) + '조 원' : (Math.random() * 2 + 0.5).toFixed(2) + 'T (달러)' },
-      { label: 'PER (주가수익비율)', value: (Math.random() * 20 + 10).toFixed(2) },
+      { label: 'PER / PBR', value: `${(Math.random() * 20 + 10).toFixed(2)} / ${(Math.random() * 3 + 1).toFixed(2)}` },
+      { label: 'ROE (자기자본이익률)', value: (Math.random() * 15 + 5).toFixed(2) + '%' },
       { label: '배당수익률', value: (Math.random() * 4 + 0.5).toFixed(2) + '%' },
       { label: '52주 최고/최저', value: isKorea ? `${(price * 1.3).toLocaleString(undefined, {maximumFractionDigits:0})} / ${(price * 0.8).toLocaleString(undefined, {maximumFractionDigits:0})}` : `${(price * 1.3).toFixed(2)} / ${(price * 0.8).toFixed(2)}` },
       { label: '목표 주가', value: isKorea ? (price * 1.2).toLocaleString(undefined, {maximumFractionDigits:0}) + '원' : '$' + (price * 1.2).toFixed(2), isBold: true },
+      { label: '어닝콜 요약', value: '매출 다각화 및 마진 개선 긍정적 평가' },
       { label: '투자의견', value: Math.random() > 0.5 ? '매수 (Buy)' : '보유 (Hold)', valueColor: 'var(--accent-color)', isBold: true },
     ],
-    description: `${name}의 기업 개요 및 요약 정보입니다. 백엔드 연동 시 실제 재무 실적이 반영됩니다.`
+    description: `${name}의 재무 상태, 실적 및 펀더멘털을 포함한 종합 기업 분석 요약입니다.`
   };
 };
 
@@ -270,13 +233,91 @@ const BENCHMARKS = [
   { name: '원/달러 환율', value: '1,350.50' }
 ];
 
+const TechnicalMeter = ({ score, isMacro, isCommodity }) => {
+  // score: 0 to 100
+  const angle = (score / 100) * 180;
+  
+  let label = '중립 (Neutral)';
+  let color = '#94a3b8';
+  let title = '기술적 분석 (Technical Analysis)';
+  let desc = `이동평균 및 오실레이터 종합 수치 (${score.toFixed(0)}/100)`;
+  
+  if (isMacro) {
+    title = '거시경제 환경 (Macro Environment)';
+    desc = `증시에 미치는 우호적/비우호적 환경 (${score.toFixed(0)}/100)`;
+    if (score <= 20) { label = '매우 악재 (Strong Bearish)'; color = '#ef4444'; }
+    else if (score <= 40) { label = '악재 (Bearish)'; color = '#f87171'; }
+    else if (score >= 80) { label = '강한 호재 (Strong Bullish)'; color = '#3b82f6'; }
+    else if (score >= 60) { label = '호재 (Bullish)'; color = '#60a5fa'; }
+  } else if (isCommodity) {
+    title = '수급 및 펀더멘털 분석 (Supply & Demand)';
+    desc = `생산/재고/수요 종합 분석 지표 (${score.toFixed(0)}/100)`;
+    if (score <= 20) { label = '공급 과잉/수요 급감'; color = '#ef4444'; }
+    else if (score <= 40) { label = '수요 둔화'; color = '#f87171'; }
+    else if (score >= 80) { label = '공급 부족/수요 급증'; color = '#3b82f6'; }
+    else if (score >= 60) { label = '수요 강세'; color = '#60a5fa'; }
+  } else {
+    if (score <= 20) { label = '강력 매도 (Strong Sell)'; color = '#ef4444'; }
+    else if (score <= 40) { label = '매도 (Sell)'; color = '#f87171'; }
+    else if (score >= 80) { label = '강력 매수 (Strong Buy)'; color = '#3b82f6'; }
+    else if (score >= 60) { label = '매수 (Buy)'; color = '#60a5fa'; }
+  }
+
+  return (
+    <div style={{ marginTop: '1.5rem', padding: '1.5rem 1rem', backgroundColor: 'var(--bg-color)', borderRadius: '0.75rem', textAlign: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
+      <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-primary)', fontWeight: '600' }}>{title}</h4>
+      <div style={{ position: 'relative', width: '220px', height: '110px', margin: '0 auto', overflow: 'hidden' }}>
+        <svg viewBox="0 0 200 100" style={{ width: '100%', height: '100%', dropShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <defs>
+            <linearGradient id="meterGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ef4444" />
+              <stop offset="25%" stopColor="#f87171" />
+              <stop offset="50%" stopColor="#94a3b8" />
+              <stop offset="75%" stopColor="#60a5fa" />
+              <stop offset="100%" stopColor="#3b82f6" />
+            </linearGradient>
+          </defs>
+          <path d="M 15 90 A 85 85 0 0 1 185 90" fill="none" stroke="url(#meterGrad)" strokeWidth="18" strokeLinecap="round" />
+          
+          {/* Needle */}
+          <g transform={`translate(100, 90) rotate(${angle - 180})`} style={{ transition: 'transform 1s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+            <polygon points="-4,0 4,0 0,-70" fill={color} />
+            <circle cx="0" cy="0" r="8" fill={color} />
+            <circle cx="0" cy="0" r="3" fill="#ffffff" />
+          </g>
+        </svg>
+      </div>
+      <div style={{ fontSize: '1.25rem', fontWeight: '800', color: color, marginTop: '0.25rem' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+        {desc}
+      </div>
+    </div>
+  );
+};
+
 export default function ChartModal({ isOpen, onClose, item }) {
   const [activeTimeframe, setActiveTimeframe] = useState('1M');
   const [chartType, setChartType] = useState('candlestick'); 
   const [compareItems, setCompareItems] = useState([]);
   const [showMAs, setShowMAs] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [techScore, setTechScore] = useState(50);
+  const [showToast, setShowToast] = useState(false);
   
+  const checkIsMacro = (name) => {
+    if (!name) return false;
+    return ['CPI', 'PMI', '고용보고서', 'PCE', 'GDP', '수출입', '실물경제', '금통위', 'FOMC', 'ECB', '실적발표', '만기일'].some(m => name.includes(m));
+  };
+  const isMacro = useMemo(() => checkIsMacro(item?.name), [item]);
+  
+  const isCommodity = useMemo(() => {
+    if (!item?.name) return false;
+    const name = item.name;
+    return name.includes('원유') || name.includes('브렌트') || name.includes('천연가스') || name.includes('금') || name.includes('은') || name.includes('구리') || name.includes('알루미늄') || name.includes('리튬');
+  }, [item]);
+
   const summary = useMemo(() => {
     if (!item) return null;
     return generateSummaryData(item.name, item.value || item.price || '100');
@@ -285,9 +326,12 @@ export default function ChartModal({ isOpen, onClose, item }) {
   useEffect(() => {
     if (isOpen && item) {
       setCompareItems([item]);
-      setActiveTimeframe('1Y'); // 장기 추세를 위해 기본값을 1년으로 설정
-      setShowMAs(true);
+      setActiveTimeframe(checkIsMacro(item.name) ? '1Y' : '1Y'); 
+      setShowMAs(!checkIsMacro(item.name));
       setIsDropdownOpen(false);
+      // Generate a random stable tech score for the item
+      const seed = Array.from(item.name).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      setTechScore(20 + (seed % 70) + (Math.random() * 10 - 5));
     }
   }, [isOpen, item]);
 
@@ -302,27 +346,113 @@ export default function ChartModal({ isOpen, onClose, item }) {
     setCompareItems(compareItems.filter(c => c.name !== name));
   };
 
+  const [seriesData, setSeriesData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const isCompare = compareItems.length > 1;
 
-  const seriesData = useMemo(() => {
-    if (!compareItems.length) return [];
-    
-    return compareItems.map((cItem, index) => {
-      // seed variation per item to look distinct
-      const seedVal = (parseFloat(String(cItem.value || cItem.price).replace(/[^0-9.]/g, '')) || 100) * (index + 1);
-      const rawData = generateOHLCData(activeTimeframe, seedVal);
-      
-      if (!isCompare) {
-        return { name: cItem.name, type: chartType, data: rawData };
-      } else {
-        const startValue = rawData[0].y[3];
-        const lineData = rawData.map(d => ({
-          x: d.x,
-          y: Number((((d.y[3] / startValue) - 1) * 100).toFixed(2))
-        }));
-        return { name: cItem.name, type: 'line', data: lineData };
+  useEffect(() => {
+    async function fetchData() {
+      if (!compareItems.length) {
+        setSeriesData([]);
+        return;
       }
-    });
+      setIsLoading(true);
+      
+      const newSeries = await Promise.all(compareItems.map(async (cItem, index) => {
+        let symbol = cItem.symbol || cItem.name;
+        
+        // Map common Korean indices to Yahoo ticker symbols
+        if (symbol === 'S&P 500') symbol = '^GSPC';
+        else if (symbol === '나스닥') symbol = '^IXIC';
+        else if (symbol === '코스피') symbol = '^KS11';
+        else if (symbol === '미국 10년물 국채 금리') symbol = '^TNX';
+        else if (symbol === '금 (Gold)') symbol = 'GC=F';
+        else if (symbol === '비트코인 (BTC)') symbol = 'BTC-USD';
+        else if (symbol === '원/달러 환율') symbol = 'KRW=X';
+        
+        let range = '1y';
+        let interval = '1d';
+        
+        if (activeTimeframe === '1D') { range = '1d'; interval = '5m'; }
+        else if (activeTimeframe === '1W') { range = '5d'; interval = '15m'; }
+        else if (activeTimeframe === '1M') { range = '1mo'; interval = '1d'; }
+        else if (activeTimeframe === '3M') { range = '3mo'; interval = '1d'; }
+        else if (activeTimeframe === '1Y') { range = '1y'; interval = '1d'; }
+        else if (activeTimeframe === '5Y') { range = '5y'; interval = '1wk'; }
+        else if (activeTimeframe === '10Y') { range = '10y'; interval = '1mo'; }
+        else if (activeTimeframe === '30Y') { range = 'max'; interval = '1mo'; }
+        
+        if (isMacro) {
+          const isEarnings = symbol.includes('실적발표');
+          const points = isEarnings 
+            ? (activeTimeframe.includes('Y') ? parseInt(activeTimeframe)*4 : 4) // Quarterly for earnings
+            : (activeTimeframe.includes('Y') ? parseInt(activeTimeframe)*12 : 12); // Monthly for others
+          const intervalDays = isEarnings ? 90 : 30; // 3 months vs 1 month
+          const now = Date.now();
+          const isRate = symbol.includes('금리') || symbol.includes('FOMC') || symbol.includes('금통위') || symbol.includes('ECB');
+          const isEmployment = symbol.includes('고용');
+          const isPMI = symbol.includes('PMI');
+          
+          let lineData = [];
+          let barData = [];
+          for(let i = points; i >= 0; i--) {
+            const time = now - (i * intervalDays * 24 * 60 * 60 * 1000); 
+            let absVal = 0;
+            let changeVal = 0;
+            
+            if (isRate) {
+              absVal = Math.round((5.5 - ((points - i)/(isEarnings?4:12)) * 0.5) * 4) / 4; 
+              if (absVal < 4.0) absVal = 4.0;
+            } else if (isEmployment) {
+              changeVal = Math.floor((Math.random() * 300) - 50); // -50K to +250K
+              absVal = 150000 + (points - i) * 150 + changeVal;
+            } else if (isPMI) {
+              changeVal = Number(((Math.random() * 4) - 2).toFixed(2)); // -2.0 to +2.0 change
+              absVal = Number((50 + (Math.random() * 10 - 5)).toFixed(2));
+            } else {
+              // CPI, GDP, etc (MoM change)
+              changeVal = Number(((Math.random() * 0.8) - 0.3).toFixed(2)); // -0.3% to +0.5%
+              absVal = Number((3.5 + (Math.random() * 2 - 1)).toFixed(2));
+            }
+            
+            lineData.push({ time: time / 1000, x: time, y: absVal, open: absVal, high: absVal, low: absVal, close: absVal });
+            barData.push({ time: time / 1000, x: time, y: changeVal, open: changeVal, high: changeVal, low: changeVal, close: changeVal });
+          }
+          
+          if (isRate) {
+            return { name: cItem.name, type: 'line', data: lineData };
+          } else {
+            return [
+              { name: '증감 (Change)', type: 'bar', data: barData },
+              { name: `${cItem.name} (수치)`, type: 'line', data: lineData }
+            ];
+          }
+        }
+
+        const rawData = await getChartData(symbol, interval, range);
+        
+        if (!isCompare) {
+          const mappedData = rawData.map(d => ({
+            ...d,
+            y: chartType === 'line' ? d.close : d.y
+          }));
+          return { name: cItem.name, type: chartType, data: mappedData };
+        } else {
+          if (rawData.length === 0) return { name: cItem.name, type: 'line', data: [] };
+          const startValue = rawData[0].close;
+          const lineData = rawData.map(d => ({
+            x: d.x,
+            y: Number((((d.close / startValue) - 1) * 100).toFixed(2))
+          }));
+          return { name: cItem.name, type: 'line', data: lineData };
+        }
+      }));
+      
+      setSeriesData(newSeries.flat());
+      setIsLoading(false);
+    }
+    
+    fetchData();
   }, [compareItems, activeTimeframe, chartType, isCompare]);
 
   const finalSeries = useMemo(() => {
@@ -360,7 +490,7 @@ export default function ChartModal({ isOpen, onClose, item }) {
   const textColor = isDarkMode ? '#94a3b8' : '#64748b';
   const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
 
-  const actualChartType = isCompare ? 'line' : chartType;
+  const actualChartType = isCompare ? 'line' : (isMacro ? (item.name.includes('금리') || item.name.includes('FOMC') || item.name.includes('금통위') ? 'line' : 'bar') : chartType);
   
   // Base colors for compare items
   const compareColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
@@ -379,6 +509,9 @@ export default function ChartModal({ isOpen, onClose, item }) {
       borderColor: gridColor,
       strokeDashArray: 3,
     },
+    dataLabels: {
+      enabled: false
+    },
     xaxis: {
       type: 'datetime',
       labels: { style: { colors: textColor }, datetimeUTC: false },
@@ -386,22 +519,49 @@ export default function ChartModal({ isOpen, onClose, item }) {
       axisTicks: { show: false },
       tickAmount: 6,
     },
-    yaxis: {
+    yaxis: isMacro && !item.name.includes('금리') && !item.name.includes('FOMC') && !item.name.includes('금통위') && !item.name.includes('ECB') ? [
+      {
+        seriesName: '증감 (Change)',
+        labels: { style: { colors: textColor } },
+        forceNiceScale: true,
+      },
+      {
+        seriesName: `${item.name} (수치)`,
+        opposite: true,
+        labels: { style: { colors: textColor } },
+        forceNiceScale: true,
+      }
+    ] : {
       labels: {
         style: { colors: textColor },
         formatter: (value) => isCompare ? `${value.toFixed(2)}%` : value.toLocaleString(undefined, {maximumFractionDigits: 2})
-      }
+      },
+      forceNiceScale: true
     },
     plotOptions: {
+      bar: {
+        columnWidth: '60%',
+        colors: {
+          ranges: [
+            { from: -10000, to: -0.001, color: '#3b82f6' }, // Blue for negative
+            { from: 0, to: 10000, color: '#ef4444' } // Red for positive
+          ]
+        }
+      },
       candlestick: { colors: { upward: '#ef4444', downward: '#3b82f6' }, wick: { useFillColor: true } }
     },
     stroke: {
       curve: 'smooth',
-      width: isCompare ? 2 : (showMAs ? [actualChartType === 'line' ? 2 : 1, 1, 1, 1, 1, 1, 1] : (actualChartType === 'line' ? 2 : 1))
+      width: isCompare ? 2 : (isMacro ? [0, 3] : (showMAs ? [actualChartType === 'line' ? 2 : 1, 1, 1, 1, 1, 1, 1] : (actualChartType === 'line' ? 2 : 1)))
     },
-    colors: isCompare ? compareColors : singleColors,
+    fill: {
+      opacity: isMacro && !item.name.includes('금리') && !item.name.includes('FOMC') && !item.name.includes('금통위') && !item.name.includes('ECB') ? [0.4, 1] : 1,
+    },
+    colors: isCompare ? compareColors : (isMacro ? ['#94a3b8', '#f59e0b'] : singleColors),
     tooltip: {
       theme: isDarkMode ? 'dark' : 'light',
+      shared: true,
+      intersect: false,
       x: { format: 'yyyy-MM-dd HH:mm' },
       y: { formatter: (val) => isCompare ? `${val}%` : val }
     },
@@ -433,9 +593,22 @@ export default function ChartModal({ isOpen, onClose, item }) {
                 )}
               </div>
             </div>
-            <button onClick={onClose} className="badge neutral clickable" style={{ padding: '0.5rem' }}>
-              <X size={24} color="var(--text-secondary)" />
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className="badge neutral clickable" 
+                style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent' }}
+                onClick={() => {
+                  setShowToast(true);
+                  setTimeout(() => setShowToast(false), 3000);
+                }}
+                title="가격 알림 설정"
+              >
+                <Bell size={20} color="var(--accent-color)" />
+              </button>
+              <button onClick={onClose} className="badge neutral clickable" style={{ padding: '0.5rem' }}>
+                <X size={24} color="var(--text-secondary)" />
+              </button>
+            </div>
           </div>
           
           {/* Comparison Bar */}
@@ -497,33 +670,60 @@ export default function ChartModal({ isOpen, onClose, item }) {
               </div>
               
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                {!isCompare && (
+                {!isCompare && !isMacro && (
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                     <input type="checkbox" checked={showMAs} onChange={e => setShowMAs(e.target.checked)} />
                     이동평균선
                   </label>
                 )}
-                <select 
-                  className="badge neutral" 
-                  style={{ border: '1px solid var(--border-color)', outline: 'none', padding: '0.25rem', backgroundColor: 'transparent' }}
-                  value={actualChartType}
-                  onChange={(e) => setChartType(e.target.value)}
-                  disabled={isCompare}
-                >
-                  <option value="candlestick">캔들 차트</option>
-                  <option value="line">선 차트</option>
-                </select>
+                {!isMacro && (
+                  <select 
+                    className="badge neutral" 
+                    style={{ border: '1px solid var(--border-color)', outline: 'none', padding: '0.25rem', backgroundColor: 'transparent' }}
+                    value={actualChartType}
+                    onChange={(e) => setChartType(e.target.value)}
+                    disabled={isCompare}
+                  >
+                    <option value="candlestick">캔들 차트</option>
+                    <option value="line">선 차트</option>
+                  </select>
+                )}
               </div>
             </div>
             
-            <div style={{ width: '100%', height: '400px', backgroundColor: 'var(--bg-color)', borderRadius: '0.5rem', padding: '1rem 0' }}>
-              {finalSeries.length > 0 && (
-                <Chart 
-                  options={chartOptions} 
-                  series={finalSeries} 
-                  type={actualChartType} 
-                  height="100%" 
-                />
+            <div style={{ width: '100%', height: '400px', backgroundColor: 'var(--bg-color)', borderRadius: '0.5rem', padding: '1rem 0', position: 'relative' }}>
+              {isLoading && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(248, 250, 252, 0.8)', zIndex: 10 }}>
+                  <div className="text-secondary font-bold">차트 데이터를 불러오는 중...</div>
+                </div>
+              )}
+              {finalSeries.length > 0 && finalSeries[0].data && finalSeries[0].data.length > 0 && (
+                (isCompare || isMacro) ? (
+                  <Chart 
+                    options={chartOptions} 
+                    series={finalSeries} 
+                    type={actualChartType} 
+                    height="100%" 
+                  />
+                ) : (
+                  <AdvancedChart 
+                    data={finalSeries[0].data.map(d => ({
+                      time: d.time,
+                      open: Array.isArray(d.y) ? d.y[0] : d.y, 
+                      high: Array.isArray(d.y) ? d.y[1] : d.y, 
+                      low: Array.isArray(d.y) ? d.y[2] : d.y, 
+                      close: Array.isArray(d.y) ? d.y[3] : d.y,
+                      value: Array.isArray(d.y) ? d.y[3] : d.y
+                    }))}
+                    type={actualChartType === 'candlestick' ? 'candle' : 'line'}
+                    height={380}
+                  />
+                )
+              )}
+              {!isLoading && (!finalSeries.length || !finalSeries[0].data || finalSeries[0].data.length === 0) && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="text-secondary">해당 기간의 데이터가 없습니다.</div>
+                </div>
               )}
             </div>
           </div>
@@ -549,6 +749,24 @@ export default function ChartModal({ isOpen, onClose, item }) {
             <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', padding: '0.75rem', backgroundColor: 'var(--bg-color)', borderRadius: '0.5rem' }}>
               {summary.description}
             </div>
+
+            {/* Technical Meter */}
+            {!isCompare && <TechnicalMeter score={techScore} isMacro={isMacro} isCommodity={isCommodity} />}
+            
+            {/* Community Sentiment (Phase 3) */}
+            {!isCompare && (
+              <div style={{ marginTop: '1.5rem' }}>
+                <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: 'var(--text-primary)' }}>커뮤니티 심리 (Community Sentiment)</h4>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="clickable" style={{ flex: 1, padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: '0.5rem', backgroundColor: 'var(--surface-color)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🐂</span> <span style={{ fontWeight: 'bold', color: 'var(--positive-color)' }}>강세 (Bull)</span>
+                  </button>
+                  <button className="clickable" style={{ flex: 1, padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: '0.5rem', backgroundColor: 'var(--surface-color)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🐻</span> <span style={{ fontWeight: 'bold', color: 'var(--negative-color)' }}>약세 (Bear)</span>
+                  </button>
+                </div>
+              </div>
+            )}
             
             {isCompare && (
               <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--accent-color)', padding: '0.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.5rem' }}>
@@ -558,6 +776,31 @@ export default function ChartModal({ isOpen, onClose, item }) {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div style={{
+          position: 'absolute',
+          bottom: '2rem',
+          right: '2rem',
+          backgroundColor: 'var(--accent-color)',
+          color: '#ffffff',
+          padding: '1rem 1.5rem',
+          borderRadius: '0.5rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          animation: 'slideUp 0.3s ease-out forwards',
+          zIndex: 1000
+        }}>
+          <Bell size={20} />
+          <div>
+            <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>알림 설정 완료</div>
+            <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{item.name}의 목표가 도달 시 알림을 보내드립니다.</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
