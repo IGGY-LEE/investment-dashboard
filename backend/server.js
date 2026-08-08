@@ -107,7 +107,7 @@ Return EXACTLY a JSON array of objects with "titleKo" and "summaryKo" keys, matc
 Input:
 ${titles}`;
         const response = await aiClient.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-1.5-flash',
           contents: prompt
         });
         let text = response.text.trim();
@@ -222,7 +222,7 @@ Return ONLY a JSON object matching this EXACT format:
 Ensure the output is valid JSON in Korean language.`;
       
       const response = await aiClient.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-1.5-pro',
         contents: prompt,
       });
       
@@ -265,7 +265,7 @@ app.post('/api/plugin/earnings', async (req, res) => {
   try {
     if (aiClient) {
       const response = await aiClient.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         contents: `You are an AI financial analyst. Summarize the most recent hypothetical earnings call for the ticker ${ticker}. 
 Return ONLY a JSON object: 
 { "guidance": "Upgraded / Downgraded / Maintained", "summary": "A 3-bullet point summary of the earnings call", "sentiment": "Bullish / Bearish / Neutral" }`
@@ -295,7 +295,7 @@ app.post('/api/plugin/sentiment', async (req, res) => {
 
     if (aiClient) {
       const response = await aiClient.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         contents: `Analyze the sentiment of these recent news headlines for ${ticker}: "${titles}".
 Return ONLY a JSON object:
 { "score": integer between 0 to 100 (100 is highly bullish), "conclusion": "1 sentence explanation", "bullFactors": ["list of good news"], "bearFactors": ["list of bad news"] }`
