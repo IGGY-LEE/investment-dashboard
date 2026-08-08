@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Bell } from 'lucide-react';
 import Chart from 'react-apexcharts';
 import AdvancedChart from './AdvancedChart';
-import { getChartData } from '../api';
+import { getChartData, getPluginEarnings, getPluginSentiment } from '../api';
 
 const TIMEFRAMES = ['1D', '1W', '1M', '3M', '1Y', '5Y', '10Y', '30Y'];
 
@@ -305,6 +305,8 @@ export default function ChartModal({ isOpen, onClose, item }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [techScore, setTechScore] = useState(50);
   const [showToast, setShowToast] = useState(false);
+  const [pluginLoading, setPluginLoading] = useState(false);
+  const [pluginResult, setPluginResult] = useState(null);
   
   const checkIsMacro = (name) => {
     if (!name) return false;
@@ -332,8 +334,33 @@ export default function ChartModal({ isOpen, onClose, item }) {
       // Generate a random stable tech score for the item
       const seed = Array.from(item.name).reduce((acc, char) => acc + char.charCodeAt(0), 0);
       setTechScore(20 + (seed % 70) + (Math.random() * 10 - 5));
+      setPluginResult(null); // Reset plugin result on new item
     }
   }, [isOpen, item]);
+  
+  const handleRunPlugin = async (type) => {
+    setPluginLoading(true);
+    setPluginResult(null);
+    let ticker = item.symbol || item.name;
+    // Map common names for better accuracy
+    if (ticker === 'S&P 500') ticker = 'SPY';
+    else if (ticker === '나스닥') ticker = 'QQQ';
+    else if (ticker === '코스피') ticker = 'EWY';
+    
+    try {
+      if (type === 'earnings') {
+        const res = await getPluginEarnings(ticker);
+        setPluginResult({ type: 'earnings', data: res });
+      } else if (type === 'sentiment') {
+        const res = await getPluginSentiment(ticker);
+        setPluginResult({ type: 'sentiment', data: res });
+      }
+    } catch (e) {
+      console.error(e);
+      setPluginResult({ error: '데이터를 불러오는데 실패했습니다.' });
+    }
+    setPluginLoading(false);
+  };
 
   const handleAddCompare = (benchmark) => {
     if (compareItems.length >= 5) return;
@@ -653,11 +680,11 @@ export default function ChartModal({ isOpen, onClose, item }) {
           </div>
         </div>
 
-        <div className="grid-2" style={{ gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'start', padding: '0 1.5rem 1.5rem 1.5rem' }}>
+        <div className="modal-grid">
           {/* Left Column: Chart */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="flex-between">
-              <div style={{ display: 'flex', gap: '0.25rem', overflowX: 'auto', paddingBottom: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '0.25rem', overflowX: 'auto', paddingBottom: '4px', maxWidth: '100%', flex: '1 1 auto' }}>
                 {TIMEFRAMES.map(tf => (
                   <button 
                     key={tf}
@@ -765,6 +792,93 @@ export default function ChartModal({ isOpen, onClose, item }) {
                     <span style={{ fontSize: '1.2rem' }}>🐻</span> <span style={{ fontWeight: 'bold', color: 'var(--negative-color)' }}>약세 (Bear)</span>
                   </button>
                 </div>
+              </div>
+            )}
+            
+            {/* AI Plugins */}
+            {!isCompare && !isMacro && !isCommodity && (
+              <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  ✨ AI 심층 분석 플러그인
+                </h4>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <button 
+                    className="clickable"
+                    onClick={() => handleRunPlugin('earnings')}
+                    disabled={pluginLoading}
+                    style={{ flex: 1, padding: '0.75rem', border: '1px solid var(--accent-color)', borderRadius: '0.5rem', backgroundColor: 'var(--accent-color)', color: 'white', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', opacity: pluginLoading ? 0.7 : 1 }}
+                  >
+                    어닝콜 요약
+                  </button>
+                  <button 
+                    className="clickable"
+                    onClick={() => handleRunPlugin('sentiment')}
+                    disabled={pluginLoading}
+                    style={{ flex: 1, padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: '0.5rem', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', opacity: pluginLoading ? 0.7 : 1 }}
+                  >
+                    뉴스 센티먼트
+                  </button>
+                </div>
+                
+                {pluginLoading && (
+                  <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '0.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <div className="spin" style={{ display: 'inline-block', marginBottom: '0.5rem' }}>⏳</div>
+                    <div>AI가 데이터를 수집하고 분석 중입니다...</div>
+                  </div>
+                )}
+                
+                {pluginResult && pluginResult.data && pluginResult.type === 'earnings' && (
+                  <div style={{ padding: '1rem', backgroundColor: 'rgba(59, 130, 246, 0.05)', borderRadius: '0.5rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                      <span className="text-secondary font-bold">가이던스</span>
+                      <span style={{ fontWeight: 'bold', color: pluginResult.data.guidance.includes('상향') || pluginResult.data.guidance.includes('Upgraded') ? 'var(--positive-color)' : (pluginResult.data.guidance.includes('하향') || pluginResult.data.guidance.includes('Downgraded') ? 'var(--negative-color)' : 'var(--text-primary)') }}>
+                        {pluginResult.data.guidance}
+                      </span>
+                    </div>
+                    <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6', fontSize: '0.9rem' }}>
+                      {pluginResult.data.summary}
+                    </div>
+                    <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--border-color)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span className="text-secondary font-bold">AI 투자의견</span>
+                      <span style={{ fontWeight: 'bold', color: pluginResult.data.sentiment.includes('Bullish') || pluginResult.data.sentiment.includes('강세') ? 'var(--positive-color)' : (pluginResult.data.sentiment.includes('Bearish') || pluginResult.data.sentiment.includes('약세') ? 'var(--negative-color)' : 'var(--text-primary)') }}>
+                        {pluginResult.data.sentiment}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {pluginResult && pluginResult.data && pluginResult.type === 'sentiment' && (
+                  <div style={{ padding: '1rem', backgroundColor: 'rgba(59, 130, 246, 0.05)', borderRadius: '0.5rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '4px solid', borderColor: pluginResult.data.score >= 60 ? 'var(--positive-color)' : (pluginResult.data.score <= 40 ? 'var(--negative-color)' : '#f59e0b'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 'bold' }}>
+                        {pluginResult.data.score}
+                      </div>
+                      <div style={{ flex: 1, fontSize: '0.95rem', lineHeight: '1.5' }}>
+                        {pluginResult.data.conclusion}
+                      </div>
+                    </div>
+                    <div className="grid-2" style={{ gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+                      <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
+                        <div style={{ color: 'var(--positive-color)', fontWeight: 'bold', marginBottom: '0.5rem' }}>👍 호재 요소</div>
+                        <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.85rem' }}>
+                          {pluginResult.data.bullFactors.map((f, i) => <li key={i}>{f}</li>)}
+                        </ul>
+                      </div>
+                      <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
+                        <div style={{ color: 'var(--negative-color)', fontWeight: 'bold', marginBottom: '0.5rem' }}>👎 악재 요소</div>
+                        <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.85rem' }}>
+                          {pluginResult.data.bearFactors.map((f, i) => <li key={i}>{f}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {pluginResult && pluginResult.error && (
+                  <div style={{ padding: '1rem', backgroundColor: 'var(--negative-bg)', color: 'var(--negative-color)', borderRadius: '0.5rem' }}>
+                    {pluginResult.error}
+                  </div>
+                )}
               </div>
             )}
             

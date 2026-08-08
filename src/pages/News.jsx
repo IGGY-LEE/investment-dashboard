@@ -49,7 +49,7 @@ export default function News() {
           time: timeStr,
           title: item.title,
           titleKo: item.titleKo,
-          summary: item.type === 'STORY' ? '주요 기사입니다. 자세한 내용은 원문을 참고하세요.' : '관련 기사입니다.',
+          summary: item.summaryKo || (item.type === 'STORY' ? '주요 기사입니다. 자세한 내용은 원문을 참고하세요.' : '관련 기사입니다.'),
           link: item.link
         };
       });

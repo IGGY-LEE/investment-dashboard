@@ -97,19 +97,48 @@ app.get('/api/news', async (req, res) => {
   try {
     const result = await yahooFinance.search(q, { newsCount: 15 });
     let newsData = result.news || [];
+    let translatedNews = [];
     
-    // 번역 API를 통해 한글 제목 추가
-    const translatedNews = await Promise.all(
-      newsData.map(async (newsItem) => {
-        try {
-          const res = await translate(newsItem.title, { to: 'ko' });
-          return { ...newsItem, titleKo: res.text };
-        } catch (e) {
-          console.error('Translation failed for:', newsItem.title, e.message);
-          return { ...newsItem, titleKo: newsItem.title };
-        }
-      })
-    );
+    if (aiClient) {
+      try {
+        const titles = newsData.map((n, i) => `[${i}] ${n.title}`).join('\n');
+        const prompt = `You are a financial translator. Translate the following news titles into natural Korean, and also write a brief 1-sentence Korean summary (guess the context from the title).
+Return EXACTLY a JSON array of objects with "titleKo" and "summaryKo" keys, matching the index order. Do NOT include markdown blocks, just the JSON array.
+Input:
+${titles}`;
+        const response = await aiClient.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt
+        });
+        let text = response.text.trim();
+        if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
+        else if (text.startsWith('```')) text = text.replace(/^```\n/, '').replace(/\n```$/, '').trim();
+        const aiResults = JSON.parse(text);
+        
+        translatedNews = newsData.map((item, idx) => ({
+          ...item,
+          titleKo: aiResults[idx]?.titleKo || item.title,
+          summaryKo: aiResults[idx]?.summaryKo || '자세한 내용은 원문을 참고하세요.'
+        }));
+      } catch (e) {
+        console.error('Gemini batch translation failed:', e.message);
+      }
+    }
+    
+    // Fallback to basic translation if Gemini failed or is not available
+    if (translatedNews.length === 0) {
+      translatedNews = await Promise.all(
+        newsData.map(async (newsItem) => {
+          try {
+            const res = await translate(newsItem.title, { to: 'ko' });
+            return { ...newsItem, titleKo: res.text, summaryKo: '자세한 내용은 원문을 참고하세요.' };
+          } catch (e) {
+            console.error('Translation failed for:', newsItem.title, e.message);
+            return { ...newsItem, titleKo: newsItem.title, summaryKo: '자세한 내용은 원문을 참고하세요.' };
+          }
+        })
+      );
+    }
     
     cache.set(cacheKey, translatedNews, 300); // 5 minutes cache for news
     res.json({ news: translatedNews });

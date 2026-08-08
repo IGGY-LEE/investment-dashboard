@@ -197,6 +197,17 @@ button {
   .mobile-header {
     display: flex;
   }
+  .ticker-wrap {
+    margin-left: -1rem;
+    padding-left: 1rem;
+    width: calc(100% + 2rem);
+  }
+  .modal-overlay {
+    padding: 0.5rem;
+  }
+  .modal-header {
+    padding: 1rem;
+  }
 }
 
 /* Common UI Components */
@@ -330,6 +341,7 @@ button {
   max-width: 800px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
@@ -343,6 +355,21 @@ button {
 
 .modal-body {
   padding: 1.5rem;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .modal-grid {
+    grid-template-columns: 1fr;
+    padding: 0 1rem 1rem 1rem;
+  }
 }
 
 .clickable {
