@@ -20,6 +20,7 @@ if (process.env.GEMINI_API_KEY) {
 
 // Initialize cache: stdTTL is 60 seconds, check period is 120 seconds
 const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
+const eternalCache = {}; // Fallback cache that never expires
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,12 +71,15 @@ app.get('/api/quotes', async (req, res) => {
     
     const data = Array.isArray(quotes) ? quotes : [quotes];
     cache.set(cacheKey, data);
+    eternalCache[cacheKey] = data;
     
     res.json({ quoteResponse: { result: data } });
   } catch (error) {
     console.error('Yahoo Finance API Error (Quotes):', error.message);
-    // If it fails, try to return stale cache if available (though node-cache removes it after TTL by default, 
-    // we can still catch immediate errors)
+    if (eternalCache[cacheKey]) {
+      console.log('Returning fallback cache for', cacheKey);
+      return res.json({ quoteResponse: { result: eternalCache[cacheKey] }, cached: true, fallback: true });
+    }
     res.status(500).json({ error: 'Failed to fetch data', details: error.message });
   }
 });
