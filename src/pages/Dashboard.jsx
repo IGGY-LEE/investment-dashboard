@@ -339,7 +339,7 @@ export default function Dashboard() {
     isMountedRef.current = true;
     fetchRealTimeData();
     fetchSparklines();
-    const intervalId = setInterval(fetchRealTimeData, 60000); // 60 seconds
+    const intervalId = setInterval(fetchRealTimeData, 1800000); // 30 minutes
 
     return () => {
       isMountedRef.current = false;
