@@ -55,7 +55,27 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', uptime: process.uptime() });
 });
 
-// Yahoo Finance API 우회 라우트 (With Caching & Fallback)
+// Helper: Map Yahoo tickers to Twelve Data tickers
+function mapToTwelveData(symbol) {
+  const map = {
+    '^GSPC': 'SPX',
+    '^IXIC': 'NDX',
+    '^DJI': 'DJI',
+    '^KS11': 'KOSPI', // Might not be fully supported, but we try
+    '^KQ11': 'KOSDAQ',
+    'GC=F': 'XAU/USD',
+    'BTC-USD': 'BTC/USD',
+    'KRW=X': 'USD/KRW',
+    'CL=F': 'WTI/USD',
+  };
+  
+  if (map[symbol]) return map[symbol];
+  if (symbol.endsWith('.KS')) return symbol.replace('.KS', '');
+  if (symbol.endsWith('.KQ')) return symbol.replace('.KQ', '');
+  return symbol;
+}
+
+// Yahoo Finance API 우회 라우트 (With Caching, Twelve Data & Fallback)
 app.get('/api/quotes', async (req, res) => {
   const { symbols } = req.query;
   
@@ -71,31 +91,68 @@ app.get('/api/quotes', async (req, res) => {
 
   try {
     const symbolList = symbols.split(',');
-    let quotes = [];
-    try {
-      quotes = await yahooFinance.quote(symbolList);
-    } catch (error) {
-      if (error.result && Array.isArray(error.result)) {
-        console.warn('Some symbols failed validation, returning successful ones.');
-        quotes = error.result;
-      } else {
-        throw error;
+    let finalQuotes = [];
+    let failedSymbols = [...symbolList];
+
+    // 1. Try Twelve Data if API Key exists
+    if (process.env.TWELVE_DATA_API_KEY) {
+      try {
+        const tdSymbols = symbolList.map(mapToTwelveData).join(',');
+        const tdRes = await fetch(`https://api.twelvedata.com/quote?symbol=${tdSymbols}&apikey=${process.env.TWELVE_DATA_API_KEY}`);
+        const tdData = await tdRes.json();
+        
+        if (tdData.status !== 'error') {
+          const results = tdData.symbol ? { [tdData.symbol]: tdData } : tdData; // Handle single vs multiple response
+          
+          failedSymbols = [];
+          for (const ySymbol of symbolList) {
+            const tdSym = mapToTwelveData(ySymbol);
+            const data = results[tdSym];
+            if (data && data.status !== 'error' && data.close) {
+              finalQuotes.push({
+                symbol: ySymbol,
+                regularMarketPrice: parseFloat(data.close),
+                regularMarketChangePercent: parseFloat(data.percent_change || 0)
+              });
+            } else {
+              failedSymbols.push(ySymbol);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Twelve Data API Error:', e.message);
+      }
+    }
+
+    // 2. Fallback to Yahoo Finance for any failed or remaining symbols
+    if (failedSymbols.length > 0) {
+      try {
+        let yQuotes = await yahooFinance.quote(failedSymbols);
+        yQuotes = Array.isArray(yQuotes) ? yQuotes : [yQuotes];
+        finalQuotes = [...finalQuotes, ...yQuotes];
+      } catch (yError) {
+        if (yError.result && Array.isArray(yError.result)) {
+          finalQuotes = [...finalQuotes, ...yError.result];
+        } else {
+          console.warn('Yahoo fallback completely failed for remaining symbols.');
+        }
       }
     }
     
-    const data = Array.isArray(quotes) ? quotes : [quotes];
-    cache.set(cacheKey, data);
-    eternalCache[cacheKey] = data;
+    // Save to cache
+    if (finalQuotes.length > 0) {
+      cache.set(cacheKey, finalQuotes);
+      eternalCache[cacheKey] = finalQuotes;
+    }
     
-    res.json({ quoteResponse: { result: data } });
+    res.json({ quoteResponse: { result: finalQuotes } });
   } catch (error) {
-    console.error('Yahoo Finance API Error (Quotes):', error.message);
+    console.error('Quotes API Fatal Error:', error.message);
     if (eternalCache[cacheKey]) {
-      console.log('Returning fallback cache for', cacheKey);
       return res.json({ quoteResponse: { result: eternalCache[cacheKey] }, cached: true, fallback: true });
     }
     
-    // Hard fallback: generate mock data if Yahoo API is blocked and cache is empty
+    // Hard fallback: generate mock data if everything is blocked and cache is empty
     const mockData = symbols.split(',').map(sym => ({
       symbol: sym,
       regularMarketPrice: sym.includes('^KS11') ? 2750.2 : (sym.includes('^GSPC') ? 5100.5 : 100),
