@@ -129,9 +129,51 @@ app.get('/api/quotes', async (req, res) => {
         if (yError.result && Array.isArray(yError.result)) {
           finalQuotes = [...finalQuotes, ...yError.result];
         } else {
-          console.warn('Yahoo fallback completely failed for remaining symbols.');
+          console.warn('Yahoo fallback completely failed for remaining symbols. Trying ultimate Google Finance fallback.');
         }
       }
+    }
+    
+    // 3. Ultimate Fallback to Google Finance Web Scraping
+    if (finalQuotes.length === 0 && failedSymbols.length > 0) {
+      console.warn('Using Google Finance Scraper for all symbols...');
+      const mapToGoogle = (sym) => {
+        if (sym.includes('.KS')) return `${sym.split('.')[0]}:KRX`;
+        if (sym === '^KS11') return 'KOSPI:KRX';
+        if (sym === '^KQ11') return 'KOSDAQ:KRX';
+        if (sym === '^GSPC') return '.INX:INDEXSP';
+        if (sym === '^DJI') return '.DJI:INDEXDJX';
+        if (sym === '^IXIC') return '.IXIC:INDEXNASDAQ';
+        if (sym === 'GC=F' || sym === 'GCW00') return 'GCW00:COMEX';
+        if (sym === 'BTC-USD') return 'BTC-USD';
+        return `${sym}:NASDAQ`; // Fallback for US stocks like AAPL, MSFT
+      };
+      
+      const scrapeGoogle = async (symbol) => {
+        try {
+          const res = await fetch(`https://www.google.com/finance/quote/${mapToGoogle(symbol)}`);
+          if (!res.ok) return null;
+          const html = await res.text();
+          
+          const priceMatch = html.match(/data-last-price="([^"]+)"/);
+          if (!priceMatch) return null;
+          const price = parseFloat(priceMatch[1]);
+          
+          let pctMatch = html.match(/class="JwB6bf"[^>]*>([^<]+)</) || html.match(/JwB6bf[^>]*>([^<]+)</);
+          let changePct = 0;
+          if (pctMatch) {
+            changePct = parseFloat(pctMatch[1].replace('%', '').trim());
+            if (html.includes(`aria-label="Down by ${pctMatch[1]}`)) changePct = -Math.abs(changePct);
+          }
+          
+          return { symbol, regularMarketPrice: price, regularMarketChangePercent: changePct };
+        } catch (e) {
+          return null;
+        }
+      };
+      
+      const googleResults = await Promise.all(failedSymbols.map(scrapeGoogle));
+      finalQuotes = googleResults.filter(q => q !== null);
     }
     
     // Save to cache
