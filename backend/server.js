@@ -146,7 +146,11 @@ app.get('/api/quotes', async (req, res) => {
         if (sym === '^IXIC') return '.IXIC:INDEXNASDAQ';
         if (sym === 'GC=F' || sym === 'GCW00') return 'GCW00:COMEX';
         if (sym === 'BTC-USD') return 'BTC-USD';
-        return `${sym}:NASDAQ`; // Fallback for US stocks like AAPL, MSFT
+        
+        const nyseStocks = ['UNH', 'GS', 'HD', 'CAT', 'CRM', 'MCD', 'V', 'BA', 'TRV', 'BRK.B', 'LLY', 'JPM', 'TSM', 'WMT', 'MA', 'XOM', 'JNJ', 'PG', 'ORCL', 'CVX', 'MRK', 'ABBV'];
+        if (nyseStocks.includes(sym)) return `${sym}:NYSE`;
+        
+        return `${sym}:NASDAQ`; // Fallback for US stocks like AAPL, MSFT, NVDA, AMZN, META, GOOGL, ASML, COST, AMD, QCOM, INTC, TSLA, NFLX, PEP, CSCO
       };
       
       const scrapeGoogle = async (symbol) => {
