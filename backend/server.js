@@ -135,8 +135,8 @@ app.get('/api/quotes', async (req, res) => {
     }
     
     // 3. Ultimate Fallback to Google Finance Web Scraping
-    if (finalQuotes.length === 0 && failedSymbols.length > 0) {
-      console.warn('Using Google Finance Scraper for all symbols...');
+    if (failedSymbols.length > 0) {
+      console.warn('Using Google Finance Scraper for remaining symbols...', failedSymbols);
       const mapToGoogle = (sym) => {
         if (sym.includes('.KS')) return `${sym.split('.')[0]}:KRX`;
         if (sym === '^KS11') return 'KOSPI:KRX';
@@ -173,7 +173,11 @@ app.get('/api/quotes', async (req, res) => {
       };
       
       const googleResults = await Promise.all(failedSymbols.map(scrapeGoogle));
-      finalQuotes = googleResults.filter(q => q !== null);
+      const validGoogleResults = googleResults.filter(q => q !== null);
+      finalQuotes = [...finalQuotes, ...validGoogleResults];
+      
+      const successGoogleSymbols = validGoogleResults.map(q => q.symbol);
+      failedSymbols = failedSymbols.filter(sym => !successGoogleSymbols.includes(sym));
     }
     
     // Save to cache
