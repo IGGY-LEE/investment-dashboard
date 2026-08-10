@@ -2,12 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Bell } from 'lucide-react';
 import Chart from 'react-apexcharts';
 import AdvancedChart from './AdvancedChart';
-import { getChartData, getPluginEarnings, getPluginSentiment } from '../api';
+import { getChartData, getPluginEarnings, getPluginSentiment, getQuotes } from '../api';
 
 const TIMEFRAMES = ['1D', '1W', '1M', '3M', '1Y', '5Y', '10Y', '30Y'];
 
-// Helper to generate dummy summary data
-const generateSummaryData = (name, baseValue) => {
+// Helper to generate summary data (uses real quote data if provided)
+const generateSummaryData = (name, baseValue, quoteData) => {
   const price = parseFloat(String(baseValue).replace(/[^0-9.]/g, '')) || 100;
   
   // 1. Check if commodity
@@ -208,18 +208,44 @@ const generateSummaryData = (name, baseValue) => {
   // 8. Default: Individual Stocks
   const isKorea = String(baseValue).includes('원') || /[가-힣]/.test(name);
   
+  if (quoteData) {
+    let mcapStr = 'N/A';
+    if (quoteData.marketCap) {
+      if (isKorea) {
+        mcapStr = (quoteData.marketCap / 1e12).toFixed(1) + '조 원';
+      } else {
+        mcapStr = quoteData.marketCap >= 1e12 ? (quoteData.marketCap / 1e12).toFixed(2) + 'T' 
+                : quoteData.marketCap >= 1e9 ? (quoteData.marketCap / 1e9).toFixed(2) + 'B' 
+                : (quoteData.marketCap / 1e6).toFixed(2) + 'M';
+        if (!isKorea) mcapStr = '$' + mcapStr;
+      }
+    }
+      
+    const per = quoteData.trailingPE ? quoteData.trailingPE.toFixed(2) : 'N/A';
+    const pbr = quoteData.priceToBook ? quoteData.priceToBook.toFixed(2) : 'N/A';
+    const div = quoteData.trailingAnnualDividendYield ? (quoteData.trailingAnnualDividendYield * 100).toFixed(2) + '%' : 'N/A';
+    const high = quoteData.fiftyTwoWeekHigh ? (isKorea ? quoteData.fiftyTwoWeekHigh.toLocaleString() : quoteData.fiftyTwoWeekHigh.toFixed(2)) : 'N/A';
+    const low = quoteData.fiftyTwoWeekLow ? (isKorea ? quoteData.fiftyTwoWeekLow.toLocaleString() : quoteData.fiftyTwoWeekLow.toFixed(2)) : 'N/A';
+    const analystRating = quoteData.averageAnalystRating || 'N/A';
+    
+    return {
+      fields: [
+        { label: '시가총액', value: mcapStr },
+        { label: 'PER / PBR', value: `${per} / ${pbr}` },
+        { label: '배당수익률', value: div },
+        { label: '52주 최고/최저', value: `${high} / ${low}` },
+        { label: '애널리스트 의견', value: analystRating, isBold: true, valueColor: 'var(--accent-color)' },
+      ],
+      description: `${name}의 실시간 시장 데이터입니다.`
+    };
+  }
+
+  // Fallback if no quote data is available yet
   return {
     fields: [
-      { label: '시가총액', value: isKorea ? (Math.random() * 50 + 10).toFixed(1) + '조 원' : (Math.random() * 2 + 0.5).toFixed(2) + 'T (달러)' },
-      { label: 'PER / PBR', value: `${(Math.random() * 20 + 10).toFixed(2)} / ${(Math.random() * 3 + 1).toFixed(2)}` },
-      { label: 'ROE (자기자본이익률)', value: (Math.random() * 15 + 5).toFixed(2) + '%' },
-      { label: '배당수익률', value: (Math.random() * 4 + 0.5).toFixed(2) + '%' },
-      { label: '52주 최고/최저', value: isKorea ? `${(price * 1.3).toLocaleString(undefined, {maximumFractionDigits:0})} / ${(price * 0.8).toLocaleString(undefined, {maximumFractionDigits:0})}` : `${(price * 1.3).toFixed(2)} / ${(price * 0.8).toFixed(2)}` },
-      { label: '목표 주가', value: isKorea ? (price * 1.2).toLocaleString(undefined, {maximumFractionDigits:0}) + '원' : '$' + (price * 1.2).toFixed(2), isBold: true },
-      { label: '어닝콜 요약', value: '매출 다각화 및 마진 개선 긍정적 평가' },
-      { label: '투자의견', value: Math.random() > 0.5 ? '매수 (Buy)' : '보유 (Hold)', valueColor: 'var(--accent-color)', isBold: true },
+      { label: '데이터 로딩중...', value: '' }
     ],
-    description: `${name}의 재무 상태, 실적 및 펀더멘털을 포함한 종합 기업 분석 요약입니다.`
+    description: `실시간 데이터를 불러오는 중입니다...`
   };
 };
 
@@ -320,10 +346,12 @@ export default function ChartModal({ isOpen, onClose, item }) {
     return name.includes('원유') || name.includes('브렌트') || name.includes('천연가스') || name.includes('금') || name.includes('은') || name.includes('구리') || name.includes('알루미늄') || name.includes('리튬');
   }, [item]);
 
+  const [quoteData, setQuoteData] = useState(null);
+
   const summary = useMemo(() => {
     if (!item) return null;
-    return generateSummaryData(item.name, item.value || item.price || '100');
-  }, [item]);
+    return generateSummaryData(item.name, item.value || item.price || '100', quoteData);
+  }, [item, quoteData]);
 
   useEffect(() => {
     if (isOpen && item) {
@@ -335,8 +363,26 @@ export default function ChartModal({ isOpen, onClose, item }) {
       const seed = Array.from(item.name).reduce((acc, char) => acc + char.charCodeAt(0), 0);
       setTechScore(20 + (seed % 70) + (Math.random() * 10 - 5));
       setPluginResult(null); // Reset plugin result on new item
+      
+      // Fetch real quote data for stocks/indices
+      if (!checkIsMacro(item.name) && !isCommodity) {
+        let ticker = item.symbol || item.name;
+        if (ticker === 'S&P 500') ticker = '^GSPC';
+        else if (ticker === '나스닥') ticker = '^IXIC';
+        else if (ticker === '코스피') ticker = '^KS11';
+        
+        getQuotes([ticker]).then(res => {
+          if (res && res.length > 0) {
+            setQuoteData(res[0]);
+          } else {
+            setQuoteData(null);
+          }
+        });
+      } else {
+        setQuoteData(null);
+      }
     }
-  }, [isOpen, item]);
+  }, [isOpen, item, isCommodity]);
   
   const handleRunPlugin = async (type) => {
     setPluginLoading(true);
@@ -612,7 +658,14 @@ export default function ChartModal({ isOpen, onClose, item }) {
                 {item.name}
               </h2>
               <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'baseline' }}>
-                <span className="text-2xl" style={{ fontWeight: 'bold' }}>{item.value || item.price}</span>
+                <span className="text-2xl" style={{ fontWeight: 'bold' }}>
+                  {(() => {
+                    const val = item.value || item.price;
+                    if (typeof val === 'number') return val.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    if (typeof val === 'string' && !isNaN(Number(val)) && val.trim() !== '') return Number(val).toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    return val;
+                  })()}
+                </span>
                 {item.change && (
                   <span className={`badge ${item.change.startsWith('+') ? 'positive' : 'negative'}`}>
                     {item.change}
