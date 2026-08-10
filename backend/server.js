@@ -2,7 +2,21 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const YahooFinance = require('yahoo-finance2').default;
-const yahooFinance = new YahooFinance();
+
+// Apply Method 1: Spoof User-Agent and suppress annoying Yahoo warnings
+YahooFinance.suppressNotices(['yahooSurvey', 'crumb']);
+const yahooFinance = YahooFinance;
+yahooFinance.setGlobalConfig({
+  fetchOptions: {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    }
+  },
+  queue: {
+    timeout: 60000 // Prevent queue timeouts
+  }
+});
+
 const NodeCache = require('node-cache');
 const { translate } = require('@vitalets/google-translate-api');
 const { GoogleGenAI } = require('@google/genai');
