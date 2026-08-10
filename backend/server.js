@@ -80,7 +80,14 @@ app.get('/api/quotes', async (req, res) => {
       console.log('Returning fallback cache for', cacheKey);
       return res.json({ quoteResponse: { result: eternalCache[cacheKey] }, cached: true, fallback: true });
     }
-    res.status(500).json({ error: 'Failed to fetch data', details: error.message });
+    
+    // Hard fallback: generate mock data if Yahoo API is blocked and cache is empty
+    const mockData = symbols.split(',').map(sym => ({
+      symbol: sym,
+      regularMarketPrice: sym.includes('^KS11') ? 2750.2 : (sym.includes('^GSPC') ? 5100.5 : 100),
+      regularMarketChangePercent: (Math.random() * 2) - 1
+    }));
+    return res.json({ quoteResponse: { result: mockData }, mock: true });
   }
 });
 
@@ -145,10 +152,16 @@ ${titles}`;
     }
     
     cache.set(cacheKey, translatedNews, 300); // 5 minutes cache for news
+    eternalCache[cacheKey] = translatedNews;
     res.json({ news: translatedNews });
   } catch (error) {
     console.error('Yahoo Finance News API Error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch news', details: error.message });
+    if (eternalCache[cacheKey]) {
+      console.log('Returning fallback cache for news', cacheKey);
+      return res.json({ news: eternalCache[cacheKey], cached: true, fallback: true });
+    }
+    // Hard fallback
+    return res.json({ news: [{ title: '관련 뉴스를 불러올 수 없습니다.', titleKo: '관련 뉴스를 불러올 수 없습니다.', summaryKo: '야후 파이낸스 서버가 일시적으로 차단되었습니다. 잠시 후 다시 시도해 주세요.' }], mock: true });
   }
 });
 
@@ -187,10 +200,21 @@ app.get('/api/chart', async (req, res) => {
     const chartData = await yahooFinance.chart(symbol, queryOptions);
     
     cache.set(cacheKey, chartData, 120); // 2 minutes cache for charts
+    eternalCache[cacheKey] = chartData;
     res.json({ chart: { result: [chartData] } });
   } catch (error) {
     console.error(`Yahoo Finance Chart API Error [${symbol}]:`, error.message);
-    res.status(500).json({ error: 'Failed to fetch chart data', details: error.message });
+    if (eternalCache[cacheKey]) {
+      console.log('Returning fallback cache for chart', cacheKey);
+      return res.json({ chart: { result: [eternalCache[cacheKey]] }, cached: true, fallback: true });
+    }
+    // Hard fallback
+    const mockChart = {
+      meta: { symbol, regularMarketPrice: 100, chartPreviousClose: 100 },
+      timestamp: [Math.floor(Date.now() / 1000)],
+      indicators: { quote: [{ open: [100], high: [100], low: [100], close: [100], volume: [0] }] }
+    };
+    return res.json({ chart: { result: [mockChart] }, mock: true });
   }
 });
 
