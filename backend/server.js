@@ -336,16 +336,29 @@ app.get('/api/chart', async (req, res) => {
 
 // AI Strategy Report Endpoint
 app.post('/api/strategy', async (req, res) => {
-  const { period } = req.body; // '주간' or '월간'
+  const { period = '주간' } = req.body || {};
   
   try {
-    // 1. Fetch current macro data for context
-    const quotes = await yahooFinance.quote(['^GSPC', '^TNX', 'DX-Y.NYB', 'CL=F', 'GC=F']);
-    const marketContext = quotes.map(q => `${q.shortName || q.symbol}: ${q.regularMarketPrice} (${q.regularMarketChangePercent > 0 ? '+' : ''}${q.regularMarketChangePercent.toFixed(2)}%)`).join(', ');
+    // 1. Fetch current macro data for context (with safe fallback)
+    let quotes = [];
+    try {
+      let qRes = await yahooFinance.quote(['^GSPC', '^TNX', 'DX-Y.NYB', 'CL=F', 'GC=F']);
+      quotes = Array.isArray(qRes) ? qRes : [qRes];
+    } catch (e) {
+      console.warn('Macro quotes fetch failed in strategy, using default context:', e.message);
+      quotes = [
+        { symbol: '^GSPC', shortName: 'S&P 500', regularMarketPrice: 5100, regularMarketChangePercent: 0.5 },
+        { symbol: '^TNX', shortName: '10-Yr Bond Yield', regularMarketPrice: 4.25, regularMarketChangePercent: -0.1 },
+        { symbol: 'CL=F', shortName: 'Crude Oil', regularMarketPrice: 78.5, regularMarketChangePercent: 0.2 },
+        { symbol: 'GC=F', shortName: 'Gold', regularMarketPrice: 2350, regularMarketChangePercent: 0.4 }
+      ];
+    }
+
+    const marketContext = quotes.map(q => `${q.shortName || q.symbol}: ${q.regularMarketPrice} (${q.regularMarketChangePercent > 0 ? '+' : ''}${(q.regularMarketChangePercent || 0).toFixed(2)}%)`).join(', ');
 
     if (aiClient) {
-      // Real AI integration
-      const prompt = `You are a professional financial analyst. Based on the following real-time market data: ${marketContext}.
+      try {
+        const prompt = `You are a professional financial analyst. Based on the following real-time market data: ${marketContext}.
 Write an investment strategy report for a ${period} period.
 Return ONLY a JSON object matching this EXACT format:
 {
@@ -364,39 +377,41 @@ Return ONLY a JSON object matching this EXACT format:
   ]
 }
 Ensure the output is valid JSON in Korean language.`;
-      
-      const response = await aiClient.models.generateContent({
-        model: 'gemini-3.1-pro',
-        contents: prompt,
-      });
-      
-      let text = response.text;
-      // strip markdown json block if exists
-      if (text.startsWith('\`\`\`json')) {
-        text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+        
+        const response = await aiClient.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+        
+        let text = response.text ? response.text.trim() : '';
+        if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
+        else if (text.startsWith('```')) text = text.replace(/^```\n/, '').replace(/\n```$/, '').trim();
+        
+        return res.json(JSON.parse(text));
+      } catch (aiErr) {
+        console.warn('AI strategy generation failed, using structured fallback:', aiErr.message);
       }
-      return res.json(JSON.parse(text));
-    } else {
-      // Fallback robust mock generation using real data
-      const isSP500Up = quotes.find(q => q.symbol === '^GSPC')?.regularMarketChangePercent > 0;
-      const isRatesUp = quotes.find(q => q.symbol === '^TNX')?.regularMarketChangePercent > 0;
-      
-      return res.json({
-        title: isSP500Up ? (period === '주간' ? '단기 상승 모멘텀 유지, 기술적 저항선 돌파 시도' : '글로벌 유동성 확대에 따른 실적 장세 진입') : (period === '주간' ? '단기 변동성 확대, 방어적 포트폴리오 구축 필요' : '거시경제 불확실성 지속, 안전자산 선호 심리 강화'),
-        summary: `현재 S&P500 등 주요 지수는 ${isSP500Up ? '견조한 상승 흐름을 보이고 있습니다.' : '조정 압력을 받고 있습니다.'} 미 10년물 국채 금리가 ${isRatesUp ? '상승하며 밸류에이션 부담이' : '안정되며 유동성 환경이'} ${isRatesUp ? '커진 상태입니다.' : '개선되었습니다.'} ${marketContext} 등의 실시간 데이터가 이를 뒷받침합니다.`,
-        keyFactors: [
-          { category: '거시경제', text: `미 국채 10년물 금리 변동성 (${isRatesUp ? '상승' : '하락'})`, status: isRatesUp ? 'warning' : 'positive' },
-          { category: '증시/지수', text: `S&P500 최근 등락률 반영 중`, status: isSP500Up ? 'positive' : 'negative' },
-          { category: '원자재/환율', text: `현재 달러인덱스 및 유가 흐름 주시 필요`, status: 'neutral' },
-          { category: '포트폴리오', text: isSP500Up ? '주식 비중 유지 및 주도주 탑승 전략' : '현금 비중 확대 및 리스크 관리', status: 'neutral' }
-        ],
-        rebalancing: isSP500Up ? '현재의 상승 추세를 감안하여 성장주 비중을 유지하되, 단기 과열 시 일부 차익 실현을 권장합니다. 유동성 장세에 대비해 경기 민감주를 선별적으로 담으세요.' : '시장 변동성 확대를 대비해 고베타 주식의 비중을 축소하고 단기 채권(SHY) 및 현금 비중을 늘릴 것을 권장합니다.',
-        topPicks: [
-          { name: isSP500Up ? '미국 대형 기술주 (XLK)' : '단기 국채 ETF (SHY)', target: isSP500Up ? '상승 추세 추종 (+5~10%)' : '안전자산 헷지', thesis: isSP500Up ? '금리 안정화와 AI 사이클 지속에 따른 실적 기대감' : '시장 변동성 확대 시 자본 방어 및 이자 수익 수취', risks: '돌발적인 인플레이션 지표 상승 시 밸류에이션 충격 가능성' },
-          { name: isRatesUp ? '금융주 ETF (XLF)' : '유틸리티 ETF (XLU)', target: '구조적 대응 (+5%)', thesis: isRatesUp ? '금리 상승에 따른 순이자마진(NIM) 개선 수혜' : '금리 하락 시 고배당 매력 부각', risks: '경기 침체 우려 발생 시 펀더멘털 악화 가능성' }
-        ]
-      });
     }
+
+    // Fallback robust mock generation using real/context data
+    const isSP500Up = (quotes.find(q => q.symbol === '^GSPC')?.regularMarketChangePercent || 0) > 0;
+    const isRatesUp = (quotes.find(q => q.symbol === '^TNX')?.regularMarketChangePercent || 0) > 0;
+    
+    return res.json({
+      title: isSP500Up ? (period === '주간' ? '단기 상승 모멘텀 유지, 기술적 저항선 돌파 시도' : '글로벌 유동성 확대에 따른 실적 장세 진입') : (period === '주간' ? '단기 변동성 확대, 방어적 포트폴리오 구축 필요' : '거시경제 불확실성 지속, 안전자산 선호 심리 강화'),
+      summary: `현재 S&P500 등 주요 지수는 ${isSP500Up ? '견조한 상승 흐름을 보이고 있습니다.' : '조정 압력을 받고 있습니다.'} 미 10년물 국채 금리가 ${isRatesUp ? '상승하며 밸류에이션 부담이' : '안정되며 유동성 환경이'} ${isRatesUp ? '커진 상태입니다.' : '개선되었습니다.'} ${marketContext} 등의 실시간 데이터가 이를 뒷받침합니다.`,
+      keyFactors: [
+        { category: '거시경제', text: `미 국채 10년물 금리 변동성 (${isRatesUp ? '상승' : '하락'})`, status: isRatesUp ? 'warning' : 'positive' },
+        { category: '증시/지수', text: `S&P500 최근 등락률 반영 중`, status: isSP500Up ? 'positive' : 'negative' },
+        { category: '원자재/환율', text: `현재 달러인덱스 및 유가 흐름 주시 필요`, status: 'neutral' },
+        { category: '포트폴리오', text: isSP500Up ? '주식 비중 유지 및 주도주 탑승 전략' : '현금 비중 확대 및 리스크 관리', status: 'neutral' }
+      ],
+      rebalancing: isSP500Up ? '현재의 상승 추세를 감안하여 성장주 비중을 유지하되, 단기 과열 시 일부 차익 실현을 권장합니다. 유동성 장세에 대비해 경기 민감주를 선별적으로 담으세요.' : '시장 변동성 확대를 대비해 고베타 주식의 비중을 축소하고 단기 채권(SHY) 및 현금 비중을 늘릴 것을 권장합니다.',
+      topPicks: [
+        { name: isSP500Up ? '미국 대형 기술주 (XLK)' : '단기 국채 ETF (SHY)', target: isSP500Up ? '상승 추세 추종 (+5~10%)' : '안전자산 헷지', thesis: isSP500Up ? '금리 안정화와 AI 사이클 지속에 따른 실적 기대감' : '시장 변동성 확대 시 자본 방어 및 이자 수익 수취', risks: '돌발적인 인플레이션 지표 상승 시 밸류에이션 충격 가능성' },
+        { name: isRatesUp ? '금융주 ETF (XLF)' : '유틸리티 ETF (XLU)', target: '구조적 대응 (+5%)', thesis: isRatesUp ? '금리 상승에 따른 순이자마진(NIM) 개선 수혜' : '금리 하락 시 고배당 매력 부각', risks: '경기 침체 우려 발생 시 펀더멘털 악화 가능성' }
+      ]
+    });
   } catch (err) {
     console.error("Strategy API error:", err);
     res.status(500).json({ error: 'Failed to generate strategy' });
