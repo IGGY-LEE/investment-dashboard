@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react'
 import { LineChart, Line, ResponsiveContainer, Treemap, Tooltip as RechartsTooltip } from 'recharts'
 import { RefreshCw } from 'lucide-react'
 import ChartModal from '../components/ChartModal'
-import { getQuotes, getChartData } from '../api'
+import MarketBriefingCard from '../components/MarketBriefingCard'
+import FearGreedGauge from '../components/FearGreedGauge'
+import TopMoversCard from '../components/TopMoversCard'
+import { getQuotes, getChartData, getMarketBriefing } from '../api'
 
 const generateSparkline = (isUp) => {
   let val = 100;
@@ -212,6 +215,8 @@ export default function Dashboard() {
   ])
 
   const [detailedDataState, setDetailedDataState] = useState(detailedData)
+  const [briefingData, setBriefingData] = useState(null)
+  const [isBriefingLoading, setIsBriefingLoading] = useState(false)
   const isMountedRef = useRef(true);
 
   const HEATMAP_SYMBOL_MAP = {
@@ -335,20 +340,37 @@ export default function Dashboard() {
     }
   };
 
+  const fetchBriefing = async () => {
+    setIsBriefingLoading(true);
+    const data = await getMarketBriefing();
+    if (isMountedRef.current && data) {
+      setBriefingData(data);
+    }
+    if (isMountedRef.current) {
+      setIsBriefingLoading(false);
+    }
+  };
+
   useEffect(() => {
     isMountedRef.current = true;
     fetchRealTimeData();
     fetchSparklines();
+    fetchBriefing();
     const intervalId = setInterval(fetchRealTimeData, 1800000); // 30 minutes
+    const briefingInterval = setInterval(fetchBriefing, 180000); // 3 minutes
 
     return () => {
       isMountedRef.current = false;
       clearInterval(intervalId);
+      clearInterval(briefingInterval);
     };
   }, []);
 
   const handleUpdate = () => {
-    if (!isUpdating) fetchRealTimeData();
+    if (!isUpdating) {
+      fetchRealTimeData();
+      fetchBriefing();
+    }
   }
   
   const currentData = detailedDataState[selectedIndex]
@@ -368,6 +390,13 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {/* [방식 1] AI 실시간 시황 브리핑 카드 & 경제 일정 D-Day 칩 */}
+      <MarketBriefingCard 
+        briefingData={briefingData} 
+        isLoading={isBriefingLoading} 
+        onRefresh={handleUpdate} 
+      />
 
       <div className="flex-between" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 className="page-title" style={{ margin: 0 }}>시장 요약</h1>
@@ -429,15 +458,23 @@ export default function Dashboard() {
       </div>
 
       <div className="grid-2">
+        {/* Left Column: Fear & Greed Gauge, Breadth, Sectors */}
         <div className="card">
-          <h2 className="card-title" style={{ marginBottom: '1.5rem' }}>오늘의 하이라이트</h2>
+          <h2 className="card-title" style={{ marginBottom: '1.25rem' }}>공포·탐욕 지수 & 시장 심리</h2>
           
-          <div className="clickable" onClick={() => setSelectedItem({ name: currentData.vixName, value: currentData.vixValue })} style={{ padding: '1rem', backgroundColor: 'var(--surface-hover)', borderRadius: '0.5rem', marginBottom: '1rem' }}>
-            <div className="flex-between">
-              <span style={{ fontWeight: '500' }}>{currentData.vixName}</span>
-              <span className="text-xl">{currentData.vixValue}</span>
-            </div>
-            <div className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>시장 심리: {currentData.sentiment}</div>
+          {/* [추천기능 2] 공포·탐욕 지수 인터랙티브 게이지 */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <FearGreedGauge 
+              score={(() => {
+                const vix = parseFloat(currentData.vixValue) || 15;
+                const breadth = parseFloat(currentData.breadth.value) || 50;
+                const vixFactor = Math.max(10, Math.min(90, 100 - (vix - 10) * 4));
+                return Math.round((vixFactor * 0.45) + (breadth * 0.55));
+              })()}
+              sentiment={currentData.sentiment}
+              vixName={currentData.vixName}
+              vixValue={currentData.vixValue}
+            />
           </div>
           
           <div className="clickable" onClick={() => setSelectedItem({ name: `시장 폭 (${currentData.breadth.name})`, value: currentData.breadth.value })} style={{ padding: '1rem', backgroundColor: 'var(--surface-hover)', borderRadius: '0.5rem', marginBottom: '1.5rem' }}>
@@ -459,41 +496,51 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="flex-between" style={{ marginBottom: '1rem' }}>
-            <h2 className="card-title" style={{ margin: 0 }}>시장 맵 (Heatmap)</h2>
+        {/* Right Column: Heatmap + [추천기능 3] Top Movers Spotlight */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Market Map Heatmap */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: '340px' }}>
+            <div className="flex-between" style={{ marginBottom: '1rem' }}>
+              <h2 className="card-title" style={{ margin: 0 }}>시장 맵 (Heatmap)</h2>
+            </div>
+
+            <div style={{ flex: 1, backgroundColor: 'var(--surface-color)', borderRadius: '0.5rem', minHeight: '260px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <Treemap
+                  data={currentData.heatmap}
+                  dataKey="size"
+                  aspectRatio={4 / 3}
+                  stroke="#fff"
+                  content={<TreemapCell />}
+                  isAnimationActive={false}
+                  onClick={(e) => {
+                    if (e && e.name) setSelectedItem({ name: e.name, symbol: e.symbol || e.name, value: String(e.price || '100') });
+                  }}
+                >
+                  <RechartsTooltip 
+                    content={({ payload }) => {
+                      if (payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>{data.name}</div>
+                            <div className={data.change > 0 ? 'text-positive' : 'text-negative'}>{data.change > 0 ? '+' : ''}{data.change}%</div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </Treemap>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          <div style={{ flex: 1, backgroundColor: 'var(--surface-color)', borderRadius: '0.5rem', minHeight: '300px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <Treemap
-                data={currentData.heatmap}
-                dataKey="size"
-                aspectRatio={4 / 3}
-                stroke="#fff"
-                content={<TreemapCell />}
-                isAnimationActive={false}
-                onClick={(e) => {
-                  if (e && e.name) setSelectedItem({ name: e.name, symbol: e.symbol || e.name, value: String(e.price || '100') });
-                }}
-              >
-                <RechartsTooltip 
-                  content={({ payload }) => {
-                    if (payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}>
-                          <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>{data.name}</div>
-                          <div className={data.change > 0 ? 'text-positive' : 'text-negative'}>{data.change > 0 ? '+' : ''}{data.change}%</div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </Treemap>
-            </ResponsiveContainer>
-          </div>
+          {/* [추천기능 3] 실시간 급등/급락 스팟라이트 카드 */}
+          <TopMoversCard 
+            heatmapItems={currentData.heatmap}
+            onSelectStock={(stock) => setSelectedItem(stock)}
+          />
         </div>
       </div>
 

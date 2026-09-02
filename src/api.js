@@ -31,6 +31,16 @@ export const getNews = async (query) => {
     console.error('Failed to fetch news:', error);
     return [];
   }
+};export const getMarketBriefing = async () => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL || '';
+    const response = await fetch(`${baseUrl}/api/briefing`);
+    if (!response.ok) throw new Error('Briefing API failed');
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch market briefing:', error);
+    return null;
+  }
 };
 
 /**

@@ -27,6 +27,23 @@ if (process.env.GEMINI_API_KEY) {
   }
 }
 
+// Helper: Call Gemini with model fallback chain (gemini-3.8-flash -> gemini-3.6-flash -> gemini-2.5-flash)
+async function generateGeminiContent(contents) {
+  if (!aiClient) return null;
+  const models = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash'];
+  for (const model of models) {
+    try {
+      const response = await aiClient.models.generateContent({ model, contents });
+      if (response && response.text) {
+        return { text: response.text, model };
+      }
+    } catch (err) {
+      console.warn(`Gemini model ${model} temporarily unavailable: ${err.message}. Trying next fallback...`);
+    }
+  }
+  return null;
+}
+
 // Initialize cache: stdTTL is 60 seconds, check period is 120 seconds
 const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 const eternalCache = {}; // Fallback cache that never expires
@@ -234,7 +251,7 @@ Return EXACTLY a JSON array of objects with "titleKo" and "summaryKo" keys, matc
 Input:
 ${titles}`;
         const response = await aiClient.models.generateContent({
-          model: 'gemini-3.6-flash',
+          model: 'gemini-3.8-flash',
           contents: prompt
         });
         let text = response.text.trim();
@@ -378,12 +395,10 @@ Return ONLY a JSON object matching this EXACT format:
 }
 Ensure the output is valid JSON in Korean language.`;
         
-        const response = await aiClient.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-        });
+        const aiResult = await generateGeminiContent(prompt);
+        if (!aiResult) throw new Error('All candidate Gemini models failed');
         
-        let text = response.text ? response.text.trim() : '';
+        let text = aiResult.text ? aiResult.text.trim() : '';
         if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
         else if (text.startsWith('```')) text = text.replace(/^```\n/, '').replace(/\n```$/, '').trim();
         
@@ -424,13 +439,13 @@ app.post('/api/plugin/earnings', async (req, res) => {
   try {
     if (aiClient) {
       const response = await aiClient.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.8-flash',
         contents: `You are an AI financial analyst. Summarize the most recent hypothetical earnings call for the ticker ${ticker}. 
 Return ONLY a JSON object: 
 { "guidance": "Upgraded / Downgraded / Maintained", "summary": "A 3-bullet point summary of the earnings call", "sentiment": "Bullish / Bearish / Neutral" }`
       });
       let text = response.text;
-      if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+      if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
       return res.json(JSON.parse(text));
     } else {
       return res.json({
@@ -454,13 +469,13 @@ app.post('/api/plugin/sentiment', async (req, res) => {
 
     if (aiClient) {
       const response = await aiClient.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.8-flash',
         contents: `Analyze the sentiment of these recent news headlines for ${ticker}: "${titles}".
 Return ONLY a JSON object:
 { "score": integer between 0 to 100 (100 is highly bullish), "conclusion": "1 sentence explanation", "bullFactors": ["list of good news"], "bearFactors": ["list of bad news"] }`
       });
       let text = response.text;
-      if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+      if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
       return res.json(JSON.parse(text));
     } else {
       // Mock logic
@@ -474,6 +489,119 @@ Return ONLY a JSON object:
     }
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// AI 실시간 시장 브리핑 (Market Briefing) 엔드포인트
+app.get('/api/briefing', async (req, res) => {
+  const cacheKey = 'market_briefing_latest';
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    return res.json(cachedData);
+  }
+
+  try {
+    // 1. Fetch current index quotes (with safety)
+    let quotes = [];
+    try {
+      let qRes = await yahooFinance.quote(['^GSPC', '^IXIC', '^DJI', '^KS11', '^KQ11']);
+      quotes = Array.isArray(qRes) ? qRes : [qRes];
+    } catch (e) {
+      quotes = [
+        { symbol: '^GSPC', shortName: 'S&P 500', regularMarketPrice: 7740, regularMarketChangePercent: 0.6 },
+        { symbol: '^IXIC', shortName: '나스닥', regularMarketPrice: 26390, regularMarketChangePercent: 0.4 },
+        { symbol: '^KS11', shortName: '코스피', regularMarketPrice: 6470, regularMarketChangePercent: -0.8 }
+      ];
+    }
+
+    // 2. Fetch top breaking news
+    let breakingNews = [];
+    try {
+      const searchRes = await yahooFinance.search('stock market economy', { newsCount: 5 });
+      const rawNews = searchRes.news || [];
+      breakingNews = rawNews.slice(0, 4).map(n => ({
+        title: n.title,
+        source: n.publisher || 'Finance News',
+        time: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '방금 전',
+        link: n.link || '#'
+      }));
+    } catch (ne) {
+      console.warn('Briefing news fetch fallback:', ne.message);
+    }
+
+    const quotesSummary = quotes.map(q => `${q.shortName || q.symbol}: ${q.regularMarketPrice} (${q.regularMarketChangePercent > 0 ? '+' : ''}${(q.regularMarketChangePercent || 0).toFixed(2)}%)`).join(', ');
+    const newsSummary = breakingNews.map(n => n.title).join(' | ');
+
+    if (aiClient) {
+      try {
+        const prompt = `You are a chief investment strategist and financial anchor. Analyze current financial market conditions:
+Market data: ${quotesSummary}
+Recent headlines: ${newsSummary}
+
+Provide a concise, real-time market briefing in Korean.
+Return ONLY valid JSON matching this exact structure:
+{
+  "headline": "1-2 sentence real-time market headline summarizing the dominant market theme and direction with an appropriate emoji prefix.",
+  "sentiment": "탐욕 / 공포 / 중립 / 관망 / 혼조 중 하나",
+  "sentimentReason": "1-sentence reason for this sentiment",
+  "keyDrivers": [
+    "핵심 요인 1 (예: 기술주 차익 실현 및 반도체 조정)",
+    "핵심 요인 2 (예: 국채 금리 안정세 및 유동성 기대)",
+    "핵심 요인 3 (예: 환율 변동성 및 주요 경제 지표 발표 대기)"
+  ],
+  "riskLevel": "주의 / 보통 / 안정 중 하나"
+}
+Ensure the text is natural Korean and strictly JSON without code blocks.`;
+
+        const aiResult = await generateGeminiContent(prompt);
+        if (!aiResult) throw new Error('All candidate Gemini models failed');
+
+        let text = aiResult.text ? aiResult.text.trim() : '';
+        if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
+        else if (text.startsWith('```')) text = text.replace(/^```\n/, '').replace(/\n```$/, '').trim();
+        
+        const aiJson = JSON.parse(text);
+        const result = {
+          ...aiJson,
+          breakingNews,
+          quotes: quotes.map(q => ({ symbol: q.symbol, name: q.shortName || q.symbol, price: q.regularMarketPrice, change: q.regularMarketChangePercent })),
+          updatedAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          aiModel: aiResult.model === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : (aiResult.model === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : 'Gemini 2.5 Flash')
+        };
+
+        cache.set(cacheKey, result, 180); // 3 minutes cache
+        eternalCache[cacheKey] = result;
+        return res.json(result);
+      } catch (aiErr) {
+        console.warn('AI briefing generation error, using fallback:', aiErr.message);
+      }
+    }
+
+    // Fallback template if AI is not available
+    const isSPUp = (quotes.find(q => q.symbol === '^GSPC')?.regularMarketChangePercent || 0) > 0;
+    const fallbackResult = {
+      headline: isSPUp 
+        ? "🚀 글로벌 증시가 주요 대형 기술주 매수세에 힘입어 견조한 상승 흐름을 이어가고 있습니다."
+        : "⚠️ 주요 기술주 차익 실현과 거시경제 지표 발표를 앞둔 경계 심리로 증시가 숨고르기 양상을 보이고 있습니다.",
+      sentiment: isSPUp ? "탐욕" : "중립",
+      sentimentReason: isSPUp ? "주요 지수 상승 및 기업 실적 기대감 반영" : "지표 발표 관망 및 밸류에이션 부담 완화 과정",
+      keyDrivers: [
+        isSPUp ? "대형 기술주 중심의 반등세 지속" : "기술주 단기 변동성 및 차익 매물 출회",
+        "국채 금리 및 달러 인덱스 안정화 추세",
+        "주요 경제 지표(물가 및 고용) 발표 대기 모드"
+      ],
+      riskLevel: isSPUp ? "보통" : "주의",
+      breakingNews,
+      quotes: quotes.map(q => ({ symbol: q.symbol, name: q.shortName || q.symbol, price: q.regularMarketPrice, change: q.regularMarketChangePercent })),
+      updatedAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      aiModel: 'Smart Template'
+    };
+
+    cache.set(cacheKey, fallbackResult, 180);
+    return res.json(fallbackResult);
+  } catch (error) {
+    console.error('Briefing API Error:', error.message);
+    res.status(500).json({ error: 'Failed to generate briefing' });
   }
 });
 
