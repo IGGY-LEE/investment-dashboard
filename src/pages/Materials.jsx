@@ -16,6 +16,11 @@ export default function Materials() {
     { name: '은 (Silver)', symbol: 'SI=F', price: '$22.80', change: '-1.2%', status: 'Contango', desc: '산업 수요 부진', group: '귀금속' },
     // 산업금속
     { name: '구리 (Copper)', symbol: 'HG=F', price: '$3.85', change: '+2.1%', status: 'Backwardation', desc: '중국 제조업 지표 호조', group: '산업금속' },
+    // 해운/물류 & 공급망
+    { name: '발틱운임 ETF (BDRY)', symbol: 'BDRY', price: '$14.20', change: '+2.1%', status: '물류 병목', desc: '글로벌 벌크선 운임 선물 추종', group: '해운/물류' },
+    { name: '글로벌 해운 (ZIM)', symbol: 'ZIM', price: '$18.50', change: '+3.4%', status: '희망봉 우회', desc: '수에즈 우회에 따른 운임 마진 급증', group: '해운/물류' },
+    { name: '구리/금 비율 (경기선행)', symbol: null, price: '1.68', change: '+0.8%', status: 'AI 전력망 강세', desc: '구리 수요 vs 안전자산 금 상대 강도', group: '해운/물류' },
+    // 농산물
     { name: '대두 (Soybeans)', symbol: 'ZS=F', price: '$1,150.25', change: '-0.3%', status: 'Contango', desc: '남미 작황 양호', group: '농산물' },
     { name: '밀 (Wheat)', symbol: 'ZW=F', price: '$580.50', change: '+1.5%', status: 'Contango', desc: '흑해 지역 수출 우려', group: '농산물' },
   ]);
@@ -60,7 +65,7 @@ export default function Materials() {
     fetchData();
   }, []);
 
-  const tabs = ['전체', '에너지', '귀금속', '산업금속', '농산물', '핵심 비율']
+  const tabs = ['전체', '에너지', '귀금속', '산업금속', '해운/물류', '농산물']
   
   const filteredMaterials = activeTab === '전체' 
     ? materials 

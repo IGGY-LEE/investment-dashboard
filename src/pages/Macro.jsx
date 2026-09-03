@@ -64,6 +64,7 @@ export default function Macro() {
 
   const macroIndicators = [
     { name: '달러 인덱스 (DXY)', symbol: 'DX-Y.NYB', value: '104.20', change: '+0.15' },
+    { name: '엔/달러 환율 (엔캐리 지표)', symbol: 'JPY=X', value: '145.20', change: '-0.50' },
     { name: '미국 10년 BEI (기대인플레이션)', value: '2.35%', change: '+0.02%', isMacroChart: true },
     { name: '연준 역레포(Reverse Repo) 잔고', value: '485B', change: '-12B', isMacroChart: true },
     { name: '미국 장단기 금리차 (10년-2년)', value: '-0.35%', change: '+0.04%', isMacroChart: true },

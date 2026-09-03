@@ -351,82 +351,282 @@ app.get('/api/chart', async (req, res) => {
   }
 });
 
-// AI Strategy Report Endpoint
+// AI 종합 매크로 & 공급망 투자 전략 리포트 엔드포인트
 app.post('/api/strategy', async (req, res) => {
   const { period = '주간' } = req.body || {};
+  const cacheKey = `strategy_intelligence_${period}`;
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    return res.json({ ...cachedData, cached: true });
+  }
   
   try {
-    // 1. Fetch current macro data for context (with safe fallback)
+    // 1. 종합 매크로, 원자재, 해운, 환율 데이터 동시 취합
+    const targetSymbols = [
+      '^GSPC', '^IXIC', '^KS11',      // 주가지수
+      '^TNX', '^TYVIX', '^VIX',        // 국채금리 & 변동성
+      'DX-Y.NYB', 'JPY=X',             // 달러 & 엔/달러(엔캐리)
+      'CL=F', 'GC=F', 'HG=F', 'NG=F',  // 유가, 금, 구리, 천연가스
+      'BDRY', 'ZIM'                    // 발틱운임 ETF, 글로벌 해운선사
+    ];
+
     let quotes = [];
     try {
-      let qRes = await yahooFinance.quote(['^GSPC', '^TNX', 'DX-Y.NYB', 'CL=F', 'GC=F']);
+      let qRes = await yahooFinance.quote(targetSymbols);
       quotes = Array.isArray(qRes) ? qRes : [qRes];
     } catch (e) {
-      console.warn('Macro quotes fetch failed in strategy, using default context:', e.message);
+      console.warn('Macro strategy quotes fetch partial error:', e.message);
       quotes = [
-        { symbol: '^GSPC', shortName: 'S&P 500', regularMarketPrice: 5100, regularMarketChangePercent: 0.5 },
-        { symbol: '^TNX', shortName: '10-Yr Bond Yield', regularMarketPrice: 4.25, regularMarketChangePercent: -0.1 },
-        { symbol: 'CL=F', shortName: 'Crude Oil', regularMarketPrice: 78.5, regularMarketChangePercent: 0.2 },
-        { symbol: 'GC=F', shortName: 'Gold', regularMarketPrice: 2350, regularMarketChangePercent: 0.4 }
+        { symbol: '^GSPC', shortName: 'S&P 500', regularMarketPrice: 5650, regularMarketChangePercent: 0.4 },
+        { symbol: '^TNX', shortName: '미 국채 10년물', regularMarketPrice: 3.85, regularMarketChangePercent: -0.8 },
+        { symbol: 'DX-Y.NYB', shortName: '달러 인덱스', regularMarketPrice: 101.4, regularMarketChangePercent: -0.2 },
+        { symbol: 'JPY=X', shortName: '엔/달러 환율', regularMarketPrice: 145.2, regularMarketChangePercent: -0.5 },
+        { symbol: 'HG=F', shortName: '구리 선물', regularMarketPrice: 4.18, regularMarketChangePercent: 1.5 },
+        { symbol: 'GC=F', shortName: '금 선물', regularMarketPrice: 2520, regularMarketChangePercent: 0.6 },
+        { symbol: 'CL=F', shortName: 'WTI 원유', regularMarketPrice: 73.8, regularMarketChangePercent: -1.1 },
+        { symbol: 'BDRY', shortName: '발틱운임 ETF', regularMarketPrice: 14.5, regularMarketChangePercent: 2.3 }
       ];
     }
+
+    const getQuote = (sym) => quotes.find(q => q.symbol === sym) || { regularMarketPrice: 0, regularMarketChangePercent: 0 };
+    const hgPrice = getQuote('HG=F').regularMarketPrice || 4.2;
+    const gcPrice = getQuote('GC=F').regularMarketPrice || 2500;
+    const copperGoldRatio = ((hgPrice / gcPrice) * 1000).toFixed(2); // standard normalized ratio
+    const jpyPrice = getQuote('JPY=X').regularMarketPrice || 145.0;
+    const yenCarryStatus = jpyPrice < 142 ? '위험 (급격한 엔고)' : (jpyPrice < 147 ? '주의 (청산 모니터링)' : '안정 (순항)');
 
     const marketContext = quotes.map(q => `${q.shortName || q.symbol}: ${q.regularMarketPrice} (${q.regularMarketChangePercent > 0 ? '+' : ''}${(q.regularMarketChangePercent || 0).toFixed(2)}%)`).join(', ');
 
     if (aiClient) {
       try {
-        const prompt = `You are a professional financial analyst. Based on the following real-time market data: ${marketContext}.
-Write an investment strategy report for a ${period} period.
-Return ONLY a JSON object matching this EXACT format:
+        const prompt = `You are the Chief Investment Officer (CIO) of a global macro hedge fund.
+Analyze the following multi-asset market context:
+Market Data: ${marketContext}
+Calculated Metrics:
+- 구리/금 비율(Copper/Gold Ratio): ${copperGoldRatio} (높을수록 경기 회복/AI 전력 수요 강세, 낮을수록 방어적 침체)
+- 엔/달러 환율: ${jpyPrice} (엔캐리 리스크 상태: ${yenCarryStatus})
+- Analysis Period: ${period} (주간 또는 월간)
+
+Generate a comprehensive, institutional-grade Global Macro, Geopolitical, Commodities, and Supply Chain Investment Intelligence Report in Korean.
+Return ONLY valid JSON matching this exact structure without markdown backticks:
 {
-  "title": "A catchy title summarizing the market",
-  "summary": "A 3-sentence summary of the current macroeconomic environment and market sentiment.",
-  "keyFactors": [
-    { "category": "거시경제", "text": "fact 1", "status": "warning" },
-    { "category": "원자재", "text": "fact 2", "status": "positive" },
-    { "category": "일정/이벤트", "text": "fact 3", "status": "neutral" },
-    { "category": "포트폴리오", "text": "fact 4", "status": "negative" }
+  "title": "A compelling institutional-grade report headline capturing the macro regime",
+  "regime": "현재 시장 국면 요약 (예: 골디락스 기대 속 공급망·엔캐리 경계 국면)",
+  "summary": "3-sentence executive summary connecting monetary policy, shipping bottlenecks, commodities, and risk sentiment.",
+  "keyPulses": [
+    {
+      "name": "엔 캐리 트레이드 위험 지수",
+      "value": "${jpyPrice} 엔",
+      "status": "${yenCarryStatus.split(' ')[0]}",
+      "badge": "${yenCarryStatus}",
+      "desc": "일본은행 금리 기조와 미국 금리 인하에 따른 엔화 청산 위험도"
+    },
+    {
+      "name": "구리/금 비율 (경기 & AI 선행)",
+      "value": "${copperGoldRatio}",
+      "status": "${parseFloat(copperGoldRatio) > 1.65 ? 'positive' : 'neutral'}",
+      "badge": "${parseFloat(copperGoldRatio) > 1.65 ? 'AI 전력망 강세' : '경기 관망'}",
+      "desc": "구리 수요(AI 데이터센터/전력망)와 금(안전자산) 간의 상대 강도"
+    },
+    {
+      "name": "해운운임 스트레스 (SCFI/BDI)",
+      "value": "고공행진",
+      "status": "warning",
+      "badge": "홍해 우회 지속",
+      "desc": "수에즈 운하 통항 제한에 따른 희망봉 우회 장기화 및 선복량 부족"
+    },
+    {
+      "name": "연준 순유동성 (RRP/TGA)",
+      "value": "중립~완화",
+      "status": "positive",
+      "badge": "금리 인하 진입",
+      "desc": "연준 9월 기준금리 인하 사이클 개시 및 시중 유동성 여건"
+    }
   ],
-  "rebalancing": "A detailed 3-sentence portfolio rebalancing recommendation.",
-  "topPicks": [
-    { "name": "Asset/Sector 1", "target": "Target return", "thesis": "Investment thesis", "risks": "Risk factors" },
-    { "name": "Asset/Sector 2", "target": "Target return", "thesis": "Investment thesis", "risks": "Risk factors" }
-  ]
+  "thematicDeepDives": {
+    "macroLiquidity": "통화정책(연준 금리인하, 달러 DXY 흐름, 엔캐리 청산 파급력)에 관한 심층 3문장 분석.",
+    "geopoliticsSupplyChain": "중동 분쟁, 홍해 사태, 희망봉 우회에 따른 해운운임(SCFI/BDI) 폭등 및 글로벌 물류 병목 3문장 분석.",
+    "commoditiesCycle": "구리(AI 데이터센터 전력망 슈퍼사이클), 원유(수급 불균형), 금(탈달러 헤지) 가격 동향 3문장 분석.",
+    "policyTariffs": "미국 대선에 따른 관세 정책, 대중국 무역 갈등, 북미 리쇼어링/니어쇼어링 파급효과 3문장 분석."
+  },
+  "actionableTheses": [
+    {
+      "id": "copper_ai",
+      "theme": "AI 전력망 & 구리 슈퍼사이클",
+      "title": "AI 데이터센터 전력 인프라 및 구리 밸류체인",
+      "thesis": "데이터센터 전력 공급 부족과 전선 교체 주기가 맞물려 구리 수요 폭증 및 초고압 변압기 독점 수혜 지속.",
+      "picks": [
+        { "name": "COPX (구리 광산 ETF)", "symbol": "COPX", "type": "ETF", "role": "글로벌 구리 원자재 대장" },
+        { "name": "LS / LS에코에너지", "symbol": "006260.KS", "type": "국내주식", "role": "해저케이블 및 초고압 전선" },
+        { "name": "HD현대일렉트릭", "symbol": "267260.KS", "type": "국내주식", "role": "북미 초고압 변압기 3년 수주잔고" }
+      ],
+      "timeframe": "중장기 스윙 (3~6개월)",
+      "allocation": "25%",
+      "risks": "중국 건설 경기 급랭 시 단기 비철금속 가격 조정 가능성"
+    },
+    {
+      "id": "shipping_shipbuilding",
+      "theme": "물류 병목 & 조선 슈퍼사이클",
+      "title": "해운 운임 고공행진과 K-조선 친환경 선박 수주 랠리",
+      "thesis": "홍해 희망봉 우회 장기화로 선박 공급 부족 지속, IMO 탄소 규제로 친환경 LNG/메탄올 추진선 교체 발주 폭증.",
+      "picks": [
+        { "name": "HD한국조선해양", "symbol": "009540.KS", "type": "국내주식", "role": "글로벌 1위 친환경 조선 지주사" },
+        { "name": "삼성중공업", "symbol": "010140.KS", "type": "국내주식", "role": "FLNG 및 고부가가치 LNG선 강자" },
+        { "name": "BDRY (발틱운임 ETF)", "symbol": "BDRY", "type": "ETF", "role": "글로벌 벌크 운임지수 직접 추종" }
+      ],
+      "timeframe": "중기 포지션 (1~3개월)",
+      "allocation": "20%",
+      "risks": "중동 평화협정 체결 시 수에즈 운하 재개통에 따른 단기 운임 조정"
+    },
+    {
+      "id": "gold_bonds_hedge",
+      "theme": "금리 인하 & 탈달러 헤지",
+      "title": "실질금리 하락기 금(Gold) 실물과 미국 장기 국채",
+      "thesis": "연준의 금리 인하 진입으로 무수익 자산인 금의 기회비용 급감, 글로벌 중앙은행의 탈달러 실물 금 매입 지속.",
+      "picks": [
+        { "name": "GLD (SPDR Gold)", "symbol": "GLD", "type": "ETF", "role": "글로벌 실물 금 ETF 1위" },
+        { "name": "TLT (미국 20년+ 국채)", "symbol": "TLT", "type": "ETF", "role": "금리 인하 시 자본차익 극대화" },
+        { "name": "고려아연", "symbol": "010130.KS", "type": "국내주식", "role": "금/은/아연 제련 마진 수혜" }
+      ],
+      "timeframe": "중장기 안정 (6~12개월)",
+      "allocation": "25%",
+      "risks": "미국 경제 노랜딩(No Landing) 시 금리 인하 속도 조절"
+    },
+    {
+      "id": "nearshoring_infra",
+      "theme": "공급망 블록화 & 니어쇼어링",
+      "title": "미-중 관세 전쟁 대응 북미 인프라 & 리쇼어링 수혜",
+      "thesis": "지정학적 갈등과 관세 장벽 회피를 위해 미국·멕시코 현지 공장 신설 붐 지속. 건설기계 및 공장 자동화 수요 견조.",
+      "picks": [
+        { "name": "PAVE (미국 인프라 ETF)", "symbol": "PAVE", "type": "ETF", "role": "북미 도로/전력/공장 인프라" },
+        { "name": "캐터필러 (CAT)", "symbol": "CAT", "type": "미국주식", "role": "글로벌 건설/채굴 중장비 독점" },
+        { "name": "이튼 (ETN)", "symbol": "ETN", "type": "미국주식", "role": "스마트 배전 및 데이터센터 전력" }
+      ],
+      "timeframe": "장기 성장 (6개월 이상)",
+      "allocation": "20%",
+      "risks": "글로벌 보호무역주의 심화에 따른 수출 둔화"
+    }
+  ],
+  "assetAllocation": {
+    "equities": 50,
+    "commodities": 20,
+    "bonds": 20,
+    "cash": 10
+  }
 }
-Ensure the output is valid JSON in Korean language.`;
-        
+Ensure strictly valid JSON in Korean.`;
+
         const aiResult = await generateGeminiContent(prompt);
         if (!aiResult) throw new Error('All candidate Gemini models failed');
-        
+
         let text = aiResult.text ? aiResult.text.trim() : '';
         if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
         else if (text.startsWith('```')) text = text.replace(/^```\n/, '').replace(/\n```$/, '').trim();
-        
-        return res.json(JSON.parse(text));
+
+        const strategyJson = JSON.parse(text);
+        const finalResponse = {
+          ...strategyJson,
+          period,
+          updatedAt: new Date().toLocaleTimeString('ko-KR'),
+          aiModel: aiResult.model === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : (aiResult.model === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : 'Gemini 2.5 Flash')
+        };
+
+        cache.set(cacheKey, finalResponse, 300); // 5 minutes cache
+        eternalCache[cacheKey] = finalResponse;
+        return res.json(finalResponse);
       } catch (aiErr) {
-        console.warn('AI strategy generation failed, using structured fallback:', aiErr.message);
+        console.warn('AI strategy generation error, using rich fallback template:', aiErr.message);
       }
     }
 
-    // Fallback robust mock generation using real/context data
-    const isSP500Up = (quotes.find(q => q.symbol === '^GSPC')?.regularMarketChangePercent || 0) > 0;
-    const isRatesUp = (quotes.find(q => q.symbol === '^TNX')?.regularMarketChangePercent || 0) > 0;
-    
-    return res.json({
-      title: isSP500Up ? (period === '주간' ? '단기 상승 모멘텀 유지, 기술적 저항선 돌파 시도' : '글로벌 유동성 확대에 따른 실적 장세 진입') : (period === '주간' ? '단기 변동성 확대, 방어적 포트폴리오 구축 필요' : '거시경제 불확실성 지속, 안전자산 선호 심리 강화'),
-      summary: `현재 S&P500 등 주요 지수는 ${isSP500Up ? '견조한 상승 흐름을 보이고 있습니다.' : '조정 압력을 받고 있습니다.'} 미 10년물 국채 금리가 ${isRatesUp ? '상승하며 밸류에이션 부담이' : '안정되며 유동성 환경이'} ${isRatesUp ? '커진 상태입니다.' : '개선되었습니다.'} ${marketContext} 등의 실시간 데이터가 이를 뒷받침합니다.`,
-      keyFactors: [
-        { category: '거시경제', text: `미 국채 10년물 금리 변동성 (${isRatesUp ? '상승' : '하락'})`, status: isRatesUp ? 'warning' : 'positive' },
-        { category: '증시/지수', text: `S&P500 최근 등락률 반영 중`, status: isSP500Up ? 'positive' : 'negative' },
-        { category: '원자재/환율', text: `현재 달러인덱스 및 유가 흐름 주시 필요`, status: 'neutral' },
-        { category: '포트폴리오', text: isSP500Up ? '주식 비중 유지 및 주도주 탑승 전략' : '현금 비중 확대 및 리스크 관리', status: 'neutral' }
+    // High-quality fallback template structured identically
+    const fallbackStrategy = {
+      title: "연준 금리인하 사이클 진입과 글로벌 공급망·원자재 재편 전략",
+      regime: "유동성 완화 기대 속 해운 병목 및 구리 슈퍼사이클 전개",
+      summary: "미 연준의 금리 인하 사이클이 본격화되면서 글로벌 유동성 환경이 개선되고 있으나, 홍해 사태에 따른 해운 운임 고공행진과 엔 캐리 트레이드 청산 리스크가 잔존하고 있습니다. 이에 따라 AI 전력망(구리), 친환경 조선 수혜주, 금/장기채 등 공급망과 금리 인하에 직접 연동되는 자산 위주의 압축 포트폴리오를 권장합니다.",
+      period,
+      updatedAt: new Date().toLocaleTimeString('ko-KR'),
+      aiModel: "Smart Macro Engine",
+      keyPulses: [
+        { name: "엔 캐리 트레이드 위험 지수", value: `${jpyPrice} 엔`, status: yenCarryStatus.split(' ')[0], badge: yenCarryStatus, desc: "엔화 가치 급등 시 글로벌 레버리지 자산 청산 위험도" },
+        { name: "구리/금 비율 (경기 & AI 선행)", value: `${copperGoldRatio}`, status: "positive", badge: "AI 전력망 강세", desc: "구리 수요(데이터센터/인프라)와 금(안전자산) 간의 상대 강도" },
+        { name: "해운운임 스트레스 (SCFI/BDI)", value: "고공행진", status: "warning", badge: "홍해 우회 지속", desc: "수에즈 운하 통항 제한에 따른 희망봉 우회 장기화 및 선박 부족" },
+        { name: "연준 순유동성 (RRP/TGA)", value: "완화 기조", status: "positive", badge: "금리 인하 진입", desc: "연준 기준금리 인하 개시 및 금융시장 유동성 여건 개선" }
       ],
-      rebalancing: isSP500Up ? '현재의 상승 추세를 감안하여 성장주 비중을 유지하되, 단기 과열 시 일부 차익 실현을 권장합니다. 유동성 장세에 대비해 경기 민감주를 선별적으로 담으세요.' : '시장 변동성 확대를 대비해 고베타 주식의 비중을 축소하고 단기 채권(SHY) 및 현금 비중을 늘릴 것을 권장합니다.',
-      topPicks: [
-        { name: isSP500Up ? '미국 대형 기술주 (XLK)' : '단기 국채 ETF (SHY)', target: isSP500Up ? '상승 추세 추종 (+5~10%)' : '안전자산 헷지', thesis: isSP500Up ? '금리 안정화와 AI 사이클 지속에 따른 실적 기대감' : '시장 변동성 확대 시 자본 방어 및 이자 수익 수취', risks: '돌발적인 인플레이션 지표 상승 시 밸류에이션 충격 가능성' },
-        { name: isRatesUp ? '금융주 ETF (XLF)' : '유틸리티 ETF (XLU)', target: '구조적 대응 (+5%)', thesis: isRatesUp ? '금리 상승에 따른 순이자마진(NIM) 개선 수혜' : '금리 하락 시 고배당 매력 부각', risks: '경기 침체 우려 발생 시 펀더멘털 악화 가능성' }
-      ]
-    });
+      thematicDeepDives: {
+        macroLiquidity: "연준의 금리 인하로 실질금리가 하락하며 위험자산 선호 심리가 점진적으로 회복되고 있습니다. 다만 일본은행의 추가 금리 인상 가능성과 엔/달러 환율 140엔선 지지 여부가 단기 변동성의 최대 복병입니다.",
+        geopoliticsSupplyChain: "중동 및 홍해 사태로 인한 아프리카 희망봉 우회가 장기화되며 글로벌 컨테이너선 유효 선복량이 10% 이상 흡수되었습니다. 이에 따라 해운 운임과 선박 신조선가가 동반 상승하는 슈퍼사이클이 전개되고 있습니다.",
+        commoditiesCycle: "구리는 전 세계적인 AI 데이터센터 전력망 구축 및 신재생에너지 인프라 증설로 구조적 쇼티지(공급 부족)에 진입했습니다. 금 역시 각국 중앙은행의 탈달러 실물 매수세에 힘입어 역사적 신고가를 경신 중입니다.",
+        policyTariffs: "미국 대선 정국에서 거론되는 보편 관세 10~20% 및 대중국 고율 관세 리스크로 인해, 아시아 생산 기지를 북미 및 멕시코로 이전하는 니어쇼어링(Nearshoring) 투자가 가속화되고 있습니다."
+      },
+      actionableTheses: [
+        {
+          id: "copper_ai",
+          theme: "AI 전력망 & 구리 슈퍼사이클",
+          title: "AI 데이터센터 전력 인프라 및 구리 밸류체인",
+          thesis: "데이터센터 전력 공급 부족과 전선 교체 주기가 맞물려 구리 수요 폭증 및 초고압 변압기 독점 수혜 지속.",
+          picks: [
+            { name: "COPX (구리 광산 ETF)", symbol: "COPX", type: "ETF", role: "글로벌 구리 광산 기업" },
+            { name: "LS / LS에코에너지", symbol: "006260.KS", type: "국내주식", role: "해저케이블 및 초고압 전선" },
+            { name: "HD현대일렉트릭", symbol: "267260.KS", type: "국내주식", role: "북미 초고압 변압기 독점 수주" }
+          ],
+          timeframe: "중장기 스윙 (3~6개월)",
+          allocation: "25%",
+          risks: "중국 건설 경기 침체 장기화 시 단기 가격 변동성"
+        },
+        {
+          id: "shipping_shipbuilding",
+          theme: "물류 병목 & 조선 슈퍼사이클",
+          title: "해운 운임 고공행진과 K-조선 친환경 선박 수주 랠리",
+          thesis: "홍해 희망봉 우회 장기화로 선박 공급 부족 지속, IMO 탄소 규제로 친환경 LNG/메탄올 추진선 교체 발주 폭증.",
+          picks: [
+            { name: "HD한국조선해양", symbol: "009540.KS", type: "국내주식", role: "친환경 고부가가치 선박 대장" },
+            { name: "삼성중공업", symbol: "010140.KS", type: "국내주식", role: "FLNG 및 대형 LNG선 수주" },
+            { name: "BDRY (발틱운임 ETF)", symbol: "BDRY", type: "ETF", role: "글로벌 벌크선 운임 추종" }
+          ],
+          timeframe: "중기 포지션 (1~3개월)",
+          allocation: "20%",
+          risks: "중동 휴전 협상 진전 시 수에즈 운하 통항 재개 가능성"
+        },
+        {
+          id: "gold_bonds_hedge",
+          theme: "금리 인하 & 탈달러 헤지",
+          title: "실질금리 하락기 금(Gold) 실물과 미국 장기 국채",
+          thesis: "연준의 금리 인하 진입으로 무수익 자산인 금의 기회비용 급감, 글로벌 중앙은행의 탈달러 실물 금 매입 지속.",
+          picks: [
+            { name: "GLD (SPDR Gold)", symbol: "GLD", type: "ETF", role: "글로벌 1위 금 실물 ETF" },
+            { name: "TLT (미국 20년+ 국채)", symbol: "TLT", type: "ETF", role: "금리 인하에 따른 채권 평가이익" },
+            { name: "고려아연", symbol: "010130.KS", type: "국내주식", role: "비철금속 및 귀금속 제련 마진" }
+          ],
+          timeframe: "중장기 안정 (6~12개월)",
+          allocation: "25%",
+          risks: "미국 기대인플레이션 반등 시 긴축 장기화 우려"
+        },
+        {
+          id: "nearshoring_infra",
+          theme: "공급망 블록화 & 니어쇼어링",
+          title: "미-중 관세 전쟁 대응 북미 인프라 & 리쇼어링 수혜",
+          thesis: "지정학적 갈등과 관세 장벽 회피를 위해 미국·멕시코 현지 공장 신설 붐 지속. 건설기계 및 공장 자동화 수요 견조.",
+          picks: [
+            { name: "PAVE (미국 인프라 ETF)", symbol: "PAVE", type: "ETF", role: "북미 인프라 테마 대표 ETF" },
+            { name: "캐터필러 (CAT)", symbol: "CAT", type: "미국주식", role: "글로벌 건설기계 및 채굴 장비" },
+            { name: "이튼 (ETN)", symbol: "ETN", type: "미국주식", role: "산업용 전기 배전 및 스마트 제어" }
+          ],
+          timeframe: "장기 성장 (6개월 이상)",
+          allocation: "20%",
+          risks: "미국 금리 고공행진 시 기업 CapEx 설비투자 지연"
+        }
+      ],
+      assetAllocation: {
+        equities: 50,
+        commodities: 20,
+        bonds: 20,
+        cash: 10
+      }
+    };
+
+    cache.set(cacheKey, fallbackStrategy, 300);
+    return res.json(fallbackStrategy);
   } catch (err) {
     console.error("Strategy API error:", err);
     res.status(500).json({ error: 'Failed to generate strategy' });
