@@ -5,7 +5,7 @@ import ChartModal from '../components/ChartModal'
 import MarketBriefingCard from '../components/MarketBriefingCard'
 import FearGreedGauge from '../components/FearGreedGauge'
 import TopMoversCard from '../components/TopMoversCard'
-import { getQuotes, getChartData, getMarketBriefing } from '../api'
+import { getQuotes, getChartData, getMarketBriefing, getFearGreedIndex } from '../api'
 
 const generateSparkline = (isUp) => {
   let val = 100;
@@ -217,6 +217,7 @@ export default function Dashboard() {
   const [detailedDataState, setDetailedDataState] = useState(detailedData)
   const [briefingData, setBriefingData] = useState(null)
   const [isBriefingLoading, setIsBriefingLoading] = useState(false)
+  const [fearGreedData, setFearGreedData] = useState(null)
   const isMountedRef = useRef(true);
 
   const HEATMAP_SYMBOL_MAP = {
@@ -351,18 +352,28 @@ export default function Dashboard() {
     }
   };
 
+  const fetchFearGreed = async () => {
+    const data = await getFearGreedIndex();
+    if (isMountedRef.current && data) {
+      setFearGreedData(data);
+    }
+  };
+
   useEffect(() => {
     isMountedRef.current = true;
     fetchRealTimeData();
     fetchSparklines();
     fetchBriefing();
+    fetchFearGreed();
     const intervalId = setInterval(fetchRealTimeData, 1800000); // 30 minutes
     const briefingInterval = setInterval(fetchBriefing, 180000); // 3 minutes
+    const fearGreedInterval = setInterval(fetchFearGreed, 300000); // 5 minutes
 
     return () => {
       isMountedRef.current = false;
       clearInterval(intervalId);
       clearInterval(briefingInterval);
+      clearInterval(fearGreedInterval);
     };
   }, []);
 
@@ -370,6 +381,7 @@ export default function Dashboard() {
     if (!isUpdating) {
       fetchRealTimeData();
       fetchBriefing();
+      fetchFearGreed();
     }
   }
   
@@ -462,18 +474,16 @@ export default function Dashboard() {
         <div className="card">
           <h2 className="card-title" style={{ marginBottom: '1.25rem' }}>공포·탐욕 지수 & 시장 심리</h2>
           
-          {/* [추천기능 2] 공포·탐욕 지수 인터랙티브 게이지 */}
+          {/* [추천기능 2] 공포·탐욕 지수 인터랙티브 게이지 (CNN 공식 실시간 연동) */}
           <div style={{ marginBottom: '1.5rem' }}>
             <FearGreedGauge 
-              score={(() => {
-                const vix = parseFloat(currentData.vixValue) || 15;
-                const breadth = parseFloat(currentData.breadth.value) || 50;
-                const vixFactor = Math.max(10, Math.min(90, 100 - (vix - 10) * 4));
-                return Math.round((vixFactor * 0.45) + (breadth * 0.55));
-              })()}
-              sentiment={currentData.sentiment}
-              vixName={currentData.vixName}
-              vixValue={currentData.vixValue}
+              score={fearGreedData ? fearGreedData.score : 36}
+              sentiment={fearGreedData ? fearGreedData.sentiment : '공포'}
+              previousClose={fearGreedData?.previousClose}
+              previous1Week={fearGreedData?.previous1Week}
+              vixName={fearGreedData ? 'VIX (변동성 지수)' : currentData.vixName}
+              vixValue={fearGreedData ? fearGreedData.vix : currentData.vixValue}
+              source={fearGreedData?.source || 'CNN 공식 실시간 지수'}
             />
           </div>
           

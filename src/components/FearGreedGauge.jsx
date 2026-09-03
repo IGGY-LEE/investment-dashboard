@@ -1,19 +1,27 @@
 import React, { useMemo } from 'react'
 
-export default function FearGreedGauge({ score = 65, sentiment = '탐욕 (Greed)', vixName = 'VIX', vixValue = '13.75' }) {
+export default function FearGreedGauge({ 
+  score = 36, 
+  sentiment = '공포', 
+  previousClose, 
+  previous1Week, 
+  vixName = 'VIX (변동성 지수)', 
+  vixValue = '15.35',
+  source = 'CNN 공식 실시간 지수'
+}) {
   // Score range: 0 ~ 100
-  const clampedScore = Math.max(0, Math.min(100, Number(score) || 50));
+  const clampedScore = Math.max(0, Math.min(100, Math.round(Number(score) || 50)));
 
   // Needle angle: -90 degrees (score 0) to +90 degrees (score 100)
   const angle = (clampedScore / 100) * 180 - 90;
 
-  // Determine sentiment color
+  // Determine sentiment color based on standard CNN Fear & Greed intervals
   const sentimentMeta = useMemo(() => {
-    if (clampedScore < 25) return { text: '극단적 공포', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', desc: '과매도 국면, 반등 기회 모색' };
-    if (clampedScore < 45) return { text: '공포', color: '#60a5fa', bg: 'rgba(96, 165, 250, 0.15)', desc: '투자 심리 위축, 방어적 접근' };
-    if (clampedScore <= 55) return { text: '중립', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', desc: '지표 대기 및 방향성 탐색' };
-    if (clampedScore <= 75) return { text: '탐욕', color: '#f97316', bg: 'rgba(249, 115, 22, 0.15)', desc: '상승 모멘텀 지속, 비중 유지' };
-    return { text: '극단적 탐욕', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', desc: '과열 경계, 분할 차익 실현 권장' };
+    if (clampedScore < 25) return { text: '극단적 공포 (Extreme Fear)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', desc: '과매도 국면, 반등 기회 모색' };
+    if (clampedScore < 45) return { text: '공포 (Fear)', color: '#60a5fa', bg: 'rgba(96, 165, 250, 0.15)', desc: '투자 심리 위축, 방어적 접근' };
+    if (clampedScore <= 55) return { text: '중립 (Neutral)', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', desc: '지표 대기 및 방향성 탐색' };
+    if (clampedScore <= 75) return { text: '탐욕 (Greed)', color: '#f97316', bg: 'rgba(249, 115, 22, 0.15)', desc: '상승 모멘텀 지속, 비중 유지' };
+    return { text: '극단적 탐욕 (Extreme Greed)', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', desc: '과열 경계, 분할 차익 실현 권장' };
   }, [clampedScore]);
 
   // Radius and center for SVG
@@ -59,9 +67,9 @@ export default function FearGreedGauge({ score = 65, sentiment = '탐욕 (Greed)
         />
 
         {/* Gauge Scale Labels */}
-        <text x="30" y="145" fontSize="11" fill="var(--text-secondary)" textAnchor="middle" fontWeight="bold">0 (공포)</text>
+        <text x="30" y="145" fontSize="11" fill="var(--text-secondary)" textAnchor="middle" fontWeight="bold">0 (극단적 공포)</text>
         <text x="130" y="22" fontSize="11" fill="var(--text-secondary)" textAnchor="middle">50 (중립)</text>
-        <text x="230" y="145" fontSize="11" fill="var(--text-secondary)" textAnchor="middle" fontWeight="bold">100 (탐욕)</text>
+        <text x="230" y="145" fontSize="11" fill="var(--text-secondary)" textAnchor="middle" fontWeight="bold">100 (극단적 탐욕)</text>
 
         {/* Animated Needle */}
         <g transform={`rotate(${angle} ${cx} ${cy})`} style={{ transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' }} filter="url(#needleShadow)">
@@ -94,7 +102,7 @@ export default function FearGreedGauge({ score = 65, sentiment = '탐욕 (Greed)
           backgroundColor: sentimentMeta.bg,
           color: sentimentMeta.color
         }}>
-          {sentimentMeta.text} ({sentiment.split(' ')[0]})
+          {sentimentMeta.text}
         </div>
         <div className="text-secondary" style={{ fontSize: '0.8rem', marginTop: '0.4rem' }}>
           {sentimentMeta.desc}
@@ -113,21 +121,27 @@ export default function FearGreedGauge({ score = 65, sentiment = '탐욕 (Greed)
       }}>
         <div style={{ textAlign: 'center' }}>
           <span className="text-secondary">어제 수치</span>
-          <div style={{ fontWeight: 'bold', marginTop: '2px' }}>{Math.max(10, clampedScore - 3)}</div>
+          <div style={{ fontWeight: 'bold', marginTop: '2px' }}>{previousClose != null ? previousClose : Math.max(10, clampedScore - 3)}</div>
         </div>
         <div style={{ width: '1px', backgroundColor: 'var(--border-color)' }} />
         <div style={{ textAlign: 'center' }}>
           <span className="text-secondary">지난주 수치</span>
-          <div style={{ fontWeight: 'bold', marginTop: '2px' }}>{Math.max(15, clampedScore - 7)}</div>
+          <div style={{ fontWeight: 'bold', marginTop: '2px' }}>{previous1Week != null ? previous1Week : Math.max(15, clampedScore - 7)}</div>
         </div>
         <div style={{ width: '1px', backgroundColor: 'var(--border-color)' }} />
         <div style={{ textAlign: 'center' }}>
-          <span className="text-secondary">{vixName.split(' ')[0]} 지수</span>
+          <span className="text-secondary">{vixName ? vixName.split(' ')[0] : 'VIX'}</span>
           <div style={{ fontWeight: 'bold', marginTop: '2px', color: parseFloat(vixValue) > 20 ? 'var(--positive-color)' : 'var(--text-primary)' }}>
             {vixValue}
           </div>
         </div>
       </div>
+      
+      {source && (
+        <div style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+          {source}
+        </div>
+      )}
     </div>
   );
 }

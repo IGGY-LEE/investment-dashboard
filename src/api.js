@@ -43,6 +43,18 @@ export const getNews = async (query) => {
   }
 };
 
+export const getFearGreedIndex = async () => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL || '';
+    const response = await fetch(`${baseUrl}/api/fear-greed`);
+    if (!response.ok) throw new Error('Fear & Greed API failed');
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch fear greed index:', error);
+    return null;
+  }
+};
+
 /**
  * Fetch historical chart data from local proxy backend
  * @param {string} ticker 

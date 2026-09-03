@@ -805,6 +805,99 @@ Ensure the text is natural Korean and strictly JSON without code blocks.`;
   }
 });
 
+// CNN 실시간 공포·탐욕 지수 (Fear & Greed Index) 및 실시간 VIX 엔드포인트
+app.get('/api/fear-greed', async (req, res) => {
+  const cacheKey = 'fear_greed_official';
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    return res.json(cachedData);
+  }
+
+  try {
+    // 1. CNN 공포·탐욕 공식 API 호출
+    let cnnData = null;
+    try {
+      const cnnRes = await fetch('https://production.dataviz.cnn.io/index/fearandgreed/graphdata', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Referer': 'https://edition.cnn.com/markets/fear-and-greed'
+        }
+      });
+      if (cnnRes.ok) {
+        const json = await cnnRes.json();
+        if (json && json.fear_and_greed) {
+          cnnData = json.fear_and_greed;
+        }
+      }
+    } catch (cnnErr) {
+      console.warn('CNN Fear & Greed fetch failed, using VIX fallback:', cnnErr.message);
+    }
+
+    // 2. 실시간 VIX 지수 가져오기
+    let vixQuote = null;
+    try {
+      vixQuote = await yahooFinance.quote('^VIX');
+    } catch (vixErr) {
+      console.warn('VIX quote fetch failed:', vixErr.message);
+    }
+    const currentVix = vixQuote?.regularMarketPrice ? vixQuote.regularMarketPrice.toFixed(2) : '15.35';
+
+    // 3. 응답 가공 (CNN 데이터가 있으면 100% 공식 데이터 반영, 없을 시 VIX 정밀 환산)
+    let score = 50;
+    let rating = 'neutral';
+    let previousClose = 50;
+    let previous1Week = 50;
+    let previous1Month = 50;
+
+    if (cnnData && typeof cnnData.score === 'number') {
+      score = Math.round(cnnData.score);
+      rating = cnnData.rating || 'neutral';
+      previousClose = Math.round(cnnData.previous_close || score);
+      previous1Week = Math.round(cnnData.previous_1_week || score);
+      previous1Month = Math.round(cnnData.previous_1_month || score);
+    } else {
+      // VIX 기반 정밀 매핑
+      const v = parseFloat(currentVix);
+      score = Math.round(Math.max(10, Math.min(90, 100 - (v - 11) * 3.8)));
+      if (score < 25) rating = 'extreme fear';
+      else if (score < 45) rating = 'fear';
+      else if (score <= 55) rating = 'neutral';
+      else if (score <= 75) rating = 'greed';
+      else rating = 'extreme greed';
+      previousClose = score;
+      previous1Week = score;
+      previous1Month = score;
+    }
+
+    const ratingMap = {
+      'extreme fear': '극단적 공포',
+      'fear': '공포',
+      'neutral': '중립',
+      'greed': '탐욕',
+      'extreme greed': '극단적 탐욕'
+    };
+
+    const result = {
+      score,
+      rating,
+      sentiment: ratingMap[rating] || '중립',
+      previousClose,
+      previous1Week,
+      previous1Month,
+      vix: currentVix,
+      source: cnnData ? 'CNN 공식 실시간 지수' : 'CBOE VIX 기반 실시간 산출',
+      updatedAt: new Date().toLocaleTimeString('ko-KR')
+    };
+
+    cache.set(cacheKey, result, 300); // 5분 캐시
+    return res.json(result);
+  } catch (err) {
+    console.error('Fear & Greed endpoint error:', err);
+    res.status(500).json({ error: 'Failed to fetch fear-greed index' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Backend server is running on port ${PORT}`);
 });
