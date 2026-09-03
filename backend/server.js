@@ -44,6 +44,17 @@ async function generateGeminiContent(contents) {
   return null;
 }
 
+// Helper: Always format time in Korea Standard Time (KST, Asia/Seoul)
+function getKSTTimeString() {
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  }).format(new Date());
+}
+
 // Initialize cache: stdTTL is 60 seconds, check period is 120 seconds
 const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 const eternalCache = {}; // Fallback cache that never expires
@@ -527,7 +538,7 @@ Ensure strictly valid JSON in Korean.`;
         const finalResponse = {
           ...strategyJson,
           period,
-          updatedAt: new Date().toLocaleTimeString('ko-KR'),
+          updatedAt: getKSTTimeString(),
           aiModel: aiResult.model === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : (aiResult.model === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : 'Gemini 2.5 Flash')
         };
 
@@ -545,7 +556,7 @@ Ensure strictly valid JSON in Korean.`;
       regime: "유동성 완화 기대 속 해운 병목 및 구리 슈퍼사이클 전개",
       summary: "미 연준의 금리 인하 사이클이 본격화되면서 글로벌 유동성 환경이 개선되고 있으나, 홍해 사태에 따른 해운 운임 고공행진과 엔 캐리 트레이드 청산 리스크가 잔존하고 있습니다. 이에 따라 AI 전력망(구리), 친환경 조선 수혜주, 금/장기채 등 공급망과 금리 인하에 직접 연동되는 자산 위주의 압축 포트폴리오를 권장합니다.",
       period,
-      updatedAt: new Date().toLocaleTimeString('ko-KR'),
+      updatedAt: getKSTTimeString(),
       aiModel: "Smart Macro Engine",
       keyPulses: [
         { name: "엔 캐리 트레이드 위험 지수", value: `${jpyPrice} 엔`, status: yenCarryStatus.split(' ')[0], badge: yenCarryStatus, desc: "엔화 가치 급등 시 글로벌 레버리지 자산 청산 위험도" },
@@ -765,7 +776,7 @@ Ensure the text is natural Korean and strictly JSON without code blocks.`;
           ...aiJson,
           breakingNews,
           quotes: quotes.map(q => ({ symbol: q.symbol, name: q.shortName || q.symbol, price: q.regularMarketPrice, change: q.regularMarketChangePercent })),
-          updatedAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          updatedAt: getKSTTimeString(),
           aiModel: aiResult.model === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : (aiResult.model === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : 'Gemini 2.5 Flash')
         };
 
@@ -793,7 +804,7 @@ Ensure the text is natural Korean and strictly JSON without code blocks.`;
       riskLevel: isSPUp ? "보통" : "주의",
       breakingNews,
       quotes: quotes.map(q => ({ symbol: q.symbol, name: q.shortName || q.symbol, price: q.regularMarketPrice, change: q.regularMarketChangePercent })),
-      updatedAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      updatedAt: getKSTTimeString(),
       aiModel: 'Smart Template'
     };
 
@@ -887,7 +898,7 @@ app.get('/api/fear-greed', async (req, res) => {
       previous1Month,
       vix: currentVix,
       source: cnnData ? 'CNN 공식 실시간 지수' : 'CBOE VIX 기반 실시간 산출',
-      updatedAt: new Date().toLocaleTimeString('ko-KR')
+      updatedAt: getKSTTimeString()
     };
 
     cache.set(cacheKey, result, 300); // 5분 캐시

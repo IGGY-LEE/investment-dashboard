@@ -96,7 +96,7 @@ export default function Strategy() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span className="text-secondary" style={{ fontSize: '0.8rem' }}>기준: {updatedAt || '실시간'}</span>
+          <span className="text-secondary" style={{ fontSize: '0.8rem' }}>기준: 한국시간(KST) {updatedAt || '실시간'}</span>
           <div style={{ display: 'flex', gap: '0.25rem', backgroundColor: 'var(--surface-color)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
             {['주간', '월간'].map(p => (
               <button 

@@ -273,7 +273,7 @@ export default function MarketBriefingCard({ briefingData, isLoading, onRefresh 
         </button>
 
         <span className="text-secondary" style={{ fontSize: '0.72rem' }}>
-          기준 시간: {briefingData?.updatedAt || '방금 전'} (3분 주기 갱신)
+          기준: 한국시간(KST) {briefingData?.updatedAt || '방금 전'} (3분 주기 갱신)
         </span>
       </div>
     </div>
