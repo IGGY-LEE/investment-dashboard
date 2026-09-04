@@ -403,11 +403,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* [방식 1] AI 실시간 시황 브리핑 카드 & 경제 일정 D-Day 칩 */}
+      {/* [방식 1] AI 실시간 시황 브리핑 카드 & 경제 일정 D-Day 칩 (지수별 연동) */}
       <MarketBriefingCard 
         briefingData={briefingData} 
         isLoading={isBriefingLoading} 
         onRefresh={handleUpdate} 
+        selectedIndex={selectedIndex}
+        onSelectIndex={setSelectedIndex}
       />
 
       <div className="flex-between" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
