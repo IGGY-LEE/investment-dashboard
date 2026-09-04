@@ -261,39 +261,56 @@ const BENCHMARKS = [
 
 const TechnicalMeter = ({ score, isMacro, isCommodity }) => {
   // score: 0 to 100
-  const angle = (score / 100) * 180;
+  const clampedScore = Math.max(0, Math.min(100, Math.round(Number(score) || 50)));
+  // Needle angle: -90 degrees (score 0 / Sell) to +90 degrees (score 100 / Buy)
+  const angle = (clampedScore / 100) * 180 - 90;
   
   let label = '중립 (Neutral)';
   let color = '#94a3b8';
   let title = '기술적 분석 (Technical Analysis)';
-  let desc = `이동평균 및 오실레이터 종합 수치 (${score.toFixed(0)}/100)`;
+  let desc = `이동평균 및 오실레이터 종합 수치 (${clampedScore}/100)`;
+  let leftLabel = '매도';
+  let rightLabel = '매수';
   
   if (isMacro) {
     title = '거시경제 환경 (Macro Environment)';
-    desc = `증시에 미치는 우호적/비우호적 환경 (${score.toFixed(0)}/100)`;
-    if (score <= 20) { label = '매우 악재 (Strong Bearish)'; color = '#ef4444'; }
-    else if (score <= 40) { label = '악재 (Bearish)'; color = '#f87171'; }
-    else if (score >= 80) { label = '강한 호재 (Strong Bullish)'; color = '#3b82f6'; }
-    else if (score >= 60) { label = '호재 (Bullish)'; color = '#60a5fa'; }
+    desc = `증시에 미치는 우호적/비우호적 환경 (${clampedScore}/100)`;
+    leftLabel = '악재';
+    rightLabel = '호재';
+    if (clampedScore <= 25) { label = '매우 악재 (Strong Bearish)'; color = '#ef4444'; }
+    else if (clampedScore <= 45) { label = '악재 (Bearish)'; color = '#f87171'; }
+    else if (clampedScore <= 55) { label = '중립 (Neutral)'; color = '#94a3b8'; }
+    else if (clampedScore <= 75) { label = '호재 (Bullish)'; color = '#60a5fa'; }
+    else { label = '강한 호재 (Strong Bullish)'; color = '#3b82f6'; }
   } else if (isCommodity) {
     title = '수급 및 펀더멘털 분석 (Supply & Demand)';
-    desc = `생산/재고/수요 종합 분석 지표 (${score.toFixed(0)}/100)`;
-    if (score <= 20) { label = '공급 과잉/수요 급감'; color = '#ef4444'; }
-    else if (score <= 40) { label = '수요 둔화'; color = '#f87171'; }
-    else if (score >= 80) { label = '공급 부족/수요 급증'; color = '#3b82f6'; }
-    else if (score >= 60) { label = '수요 강세'; color = '#60a5fa'; }
+    desc = `생산/재고/수요 종합 분석 지표 (${clampedScore}/100)`;
+    leftLabel = '공급과잉';
+    rightLabel = '수요우위';
+    if (clampedScore <= 25) { label = '공급 과잉/수요 급감'; color = '#ef4444'; }
+    else if (clampedScore <= 45) { label = '수요 둔화'; color = '#f87171'; }
+    else if (clampedScore <= 55) { label = '수급 균형 (Neutral)'; color = '#94a3b8'; }
+    else if (clampedScore <= 75) { label = '수요 강세'; color = '#60a5fa'; }
+    else { label = '공급 부족/수요 급증'; color = '#3b82f6'; }
   } else {
-    if (score <= 20) { label = '강력 매도 (Strong Sell)'; color = '#ef4444'; }
-    else if (score <= 40) { label = '매도 (Sell)'; color = '#f87171'; }
-    else if (score >= 80) { label = '강력 매수 (Strong Buy)'; color = '#3b82f6'; }
-    else if (score >= 60) { label = '매수 (Buy)'; color = '#60a5fa'; }
+    if (clampedScore <= 25) { label = '강력 매도 (Strong Sell)'; color = '#ef4444'; }
+    else if (clampedScore <= 45) { label = '매도 (Sell)'; color = '#f87171'; }
+    else if (clampedScore <= 55) { label = '중립 (Neutral)'; color = '#94a3b8'; }
+    else if (clampedScore <= 75) { label = '매수 (Buy)'; color = '#60a5fa'; }
+    else { label = '강력 매수 (Strong Buy)'; color = '#3b82f6'; }
   }
 
+  const cx = 130;
+  const cy = 105;
+  const r = 75;
+  const strokeWidth = 15;
+
   return (
-    <div style={{ marginTop: '1.5rem', padding: '1.5rem 1rem', backgroundColor: 'var(--bg-color)', borderRadius: '0.75rem', textAlign: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
-      <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-primary)', fontWeight: '600' }}>{title}</h4>
-      <div style={{ position: 'relative', width: '220px', height: '110px', margin: '0 auto', overflow: 'hidden' }}>
-        <svg viewBox="0 0 200 100" style={{ width: '100%', height: '100%', dropShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+    <div style={{ marginTop: '1.5rem', padding: '1.25rem 1rem', backgroundColor: 'var(--bg-color)', borderRadius: '0.75rem', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
+      <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', color: 'var(--text-primary)', fontWeight: '600' }}>{title}</h4>
+      
+      <div style={{ position: 'relative', width: '260px', height: '130px', margin: '0 auto', display: 'flex', justifyContent: 'center' }}>
+        <svg width="260" height="130" viewBox="0 0 260 130" style={{ overflow: 'visible' }}>
           <defs>
             <linearGradient id="meterGrad" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#ef4444" />
@@ -302,21 +319,61 @@ const TechnicalMeter = ({ score, isMacro, isCommodity }) => {
               <stop offset="75%" stopColor="#60a5fa" />
               <stop offset="100%" stopColor="#3b82f6" />
             </linearGradient>
+            <filter id="meterNeedleShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.25" />
+            </filter>
           </defs>
-          <path d="M 15 90 A 85 85 0 0 1 185 90" fill="none" stroke="url(#meterGrad)" strokeWidth="18" strokeLinecap="round" />
-          
-          {/* Needle */}
-          <g transform={`translate(100, 90) rotate(${angle - 180})`} style={{ transition: 'transform 1s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-            <polygon points="-4,0 4,0 0,-70" fill={color} />
-            <circle cx="0" cy="0" r="8" fill={color} />
-            <circle cx="0" cy="0" r="3" fill="#ffffff" />
+
+          {/* Background Arc */}
+          <path
+            d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none"
+            stroke="var(--surface-hover)"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+
+          {/* Gradient Colored Arc */}
+          <path
+            d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none"
+            stroke="url(#meterGrad)"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+
+          {/* Scale Labels */}
+          <text x={cx - r + 5} y={cy + 20} fontSize="10" fill="var(--text-secondary)" textAnchor="middle" fontWeight="bold">
+            {leftLabel}
+          </text>
+          <text x={cx} y={cy - r - 10} fontSize="10" fill="var(--text-secondary)" textAnchor="middle" fontWeight="bold">
+            중립 (50)
+          </text>
+          <text x={cx + r - 5} y={cy + 20} fontSize="10" fill="var(--text-secondary)" textAnchor="middle" fontWeight="bold">
+            {rightLabel}
+          </text>
+
+          {/* Animated Needle */}
+          <g transform={`rotate(${angle} ${cx} ${cy})`} style={{ transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' }} filter="url(#meterNeedleShadow)">
+            <line
+              x1={cx}
+              y1={cy}
+              x2={cx}
+              y2={cy - r + 8}
+              stroke={color}
+              strokeWidth="3.5"
+              strokeLinecap="round"
+            />
+            <circle cx={cx} cy={cy} r="7" fill={color} />
+            <circle cx={cx} cy={cy} r="3" fill="#ffffff" />
           </g>
         </svg>
       </div>
+
       <div style={{ fontSize: '1.25rem', fontWeight: '800', color: color, marginTop: '0.25rem' }}>
         {label}
       </div>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.35rem' }}>
         {desc}
       </div>
     </div>

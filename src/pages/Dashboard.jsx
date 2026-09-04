@@ -411,7 +411,7 @@ export default function Dashboard() {
       />
 
       <div className="flex-between" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>시장 요약</h1>
+        <h1 className="page-title" style={{ margin: 0 }}>연구원 아빠의 투자연구소</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span className="text-secondary" style={{ fontSize: '0.875rem' }}>
             마지막 업데이트: {lastUpdated}

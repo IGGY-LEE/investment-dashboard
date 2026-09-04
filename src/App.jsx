@@ -55,9 +55,9 @@ function Layout({ children }) {
       {/* PC Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <div>InvestBoard</div>
+          <div style={{ fontSize: '1.05rem', fontWeight: 'bold', letterSpacing: '-0.3px' }}>연구원 아빠의 투자연구소</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem', fontWeight: 'normal' }}>
-            designed by IGGY
+            InvestBoard by IGGY
           </div>
         </div>
         <nav className="sidebar-nav">
@@ -94,8 +94,8 @@ function Layout({ children }) {
         <header className="mobile-header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
           <div>{getPageTitle()}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 'normal', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.2' }}>
-            <span style={{ color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '0.8rem' }}>InvestBoard</span>
-            <span>designed by IGGY</span>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '0.8rem' }}>연구원 아빠의 투자연구소</span>
+            <span>InvestBoard by IGGY</span>
           </div>
         </header>
 
