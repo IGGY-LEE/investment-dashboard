@@ -472,19 +472,32 @@ export default function Dashboard() {
       <div className="grid-2">
         {/* Left Column: Fear & Greed Gauge, Breadth, Sectors */}
         <div className="card">
-          <h2 className="card-title" style={{ marginBottom: '1.25rem' }}>공포·탐욕 지수 & 시장 심리</h2>
+          <h2 className="card-title" style={{ marginBottom: '1.25rem' }}>{selectedIndex} 공포·탐욕 지수 & 시장 심리</h2>
           
-          {/* [추천기능 2] 공포·탐욕 지수 인터랙티브 게이지 (CNN 공식 실시간 연동) */}
+          {/* [추천기능 2] 공포·탐욕 지수 인터랙티브 게이지 (선택 지수별 실시간 맞춤 연동) */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <FearGreedGauge 
-              score={fearGreedData ? fearGreedData.score : 36}
-              sentiment={fearGreedData ? fearGreedData.sentiment : '공포'}
-              previousClose={fearGreedData?.previousClose}
-              previous1Week={fearGreedData?.previous1Week}
-              vixName={fearGreedData ? 'VIX (변동성 지수)' : currentData.vixName}
-              vixValue={fearGreedData ? fearGreedData.vix : currentData.vixValue}
-              source={fearGreedData?.source || 'CNN 공식 실시간 지수'}
-            />
+            {(() => {
+              const currentFG = fearGreedData?.indices?.[selectedIndex] || {
+                score: fearGreedData?.score || 36,
+                sentiment: fearGreedData?.sentiment || '공포',
+                previousClose: fearGreedData?.previousClose,
+                previous1Week: fearGreedData?.previous1Week,
+                vixName: currentData.vixName,
+                vixValue: fearGreedData?.vix || currentData.vixValue,
+                source: fearGreedData?.source || 'CNN 공식 실시간 지수'
+              };
+              return (
+                <FearGreedGauge 
+                  score={currentFG.score}
+                  sentiment={currentFG.sentiment}
+                  previousClose={currentFG.previousClose}
+                  previous1Week={currentFG.previous1Week}
+                  vixName={currentFG.vixName}
+                  vixValue={currentFG.vix}
+                  source={`${selectedIndex} · ${currentFG.source}`}
+                />
+              );
+            })()}
           </div>
           
           <div className="clickable" onClick={() => setSelectedItem({ name: `시장 폭 (${currentData.breadth.name})`, value: currentData.breadth.value })} style={{ padding: '1rem', backgroundColor: 'var(--surface-hover)', borderRadius: '0.5rem', marginBottom: '1.5rem' }}>
