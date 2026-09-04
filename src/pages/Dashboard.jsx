@@ -29,16 +29,26 @@ const detailedData = {
       { name: '금융 (Financials)', change: '+0.8%', isUp: true },
     ],
     heatmap: [
-      { name: 'AAPL', size: 300, change: 1.2 },
-      { name: 'MSFT', size: 280, change: -0.5 },
-      { name: 'NVDA', size: 250, change: 3.1 },
-      { name: 'AMZN', size: 180, change: 0.8 },
-      { name: 'META', size: 120, change: -1.2 },
-      { name: 'GOOGL', size: 170, change: 0.5 },
-      { name: 'BRK.B', size: 85, change: 0.2 },
-      { name: 'LLY', size: 75, change: 2.5 },
-      { name: 'AVGO', size: 60, change: -2.1 },
-      { name: 'JPM', size: 55, change: 0.6 },
+      { name: 'AAPL', size: 320, change: 1.2 },
+      { name: 'MSFT', size: 310, change: -0.5 },
+      { name: 'NVDA', size: 300, change: 3.1 },
+      { name: 'AMZN', size: 210, change: 0.8 },
+      { name: 'GOOGL', size: 190, change: 0.5 },
+      { name: 'META', size: 160, change: -1.2 },
+      { name: 'BRK.B', size: 110, change: 0.2 },
+      { name: 'LLY', size: 95, change: 2.5 },
+      { name: 'AVGO', size: 90, change: -2.1 },
+      { name: 'TSLA', size: 90, change: 1.5 },
+      { name: 'JPM', size: 85, change: 0.6 },
+      { name: 'WMT', size: 80, change: 0.4 },
+      { name: 'V', size: 75, change: 0.8 },
+      { name: 'UNH', size: 70, change: -0.3 },
+      { name: 'XOM', size: 65, change: -0.7 },
+      { name: 'MA', size: 65, change: 0.5 },
+      { name: 'COST', size: 60, change: 0.9 },
+      { name: 'JNJ', size: 60, change: -0.2 },
+      { name: 'HD', size: 55, change: 0.3 },
+      { name: 'PG', size: 50, change: 0.1 },
     ]
   },
   '나스닥': {
@@ -52,16 +62,26 @@ const detailedData = {
       { name: '생명공학', change: '-1.1%', isUp: false },
     ],
     heatmap: [
-      { name: 'NVDA', size: 250, change: 3.1 },
-      { name: 'AMD', size: 150, change: -1.5 },
-      { name: 'ASML', size: 100, change: 2.0 },
-      { name: 'QCOM', size: 80, change: 1.1 },
-      { name: 'INTC', size: 60, change: -2.4 },
-      { name: 'TSLA', size: 130, change: -1.5 },
-      { name: 'NFLX', size: 90, change: 4.2 },
-      { name: 'PEP', size: 70, change: 0.1 },
+      { name: 'NVDA', size: 300, change: 3.1 },
+      { name: 'MSFT', size: 290, change: -0.5 },
+      { name: 'AAPL', size: 280, change: 1.2 },
+      { name: 'AMZN', size: 200, change: 0.8 },
+      { name: 'GOOGL', size: 180, change: 0.5 },
+      { name: 'META', size: 160, change: -1.2 },
+      { name: 'AVGO', size: 120, change: -2.1 },
+      { name: 'TSLA', size: 110, change: 1.5 },
       { name: 'COST', size: 85, change: 0.8 },
-      { name: 'CSCO', size: 50, change: -0.5 },
+      { name: 'AMD', size: 80, change: -1.5 },
+      { name: 'ASML', size: 80, change: 2.0 },
+      { name: 'NFLX', size: 75, change: 4.2 },
+      { name: 'QCOM', size: 75, change: 1.1 },
+      { name: 'PEP', size: 65, change: 0.1 },
+      { name: 'ADBE', size: 65, change: -0.9 },
+      { name: 'CSCO', size: 60, change: -0.5 },
+      { name: 'INTC', size: 55, change: -2.4 },
+      { name: 'AMAT', size: 50, change: 1.8 },
+      { name: 'INTU', size: 48, change: 0.7 },
+      { name: 'ISRG', size: 45, change: 1.3 },
     ]
   },
   '다우존스': {
@@ -75,16 +95,26 @@ const detailedData = {
       { name: '금융', change: '-0.3%', isUp: false },
     ],
     heatmap: [
-      { name: 'UNH', size: 100, change: 0.5 },
-      { name: 'GS', size: 90, change: -1.2 },
-      { name: 'MSFT', size: 280, change: -0.5 },
-      { name: 'HD', size: 85, change: 1.1 },
-      { name: 'CAT', size: 75, change: 2.3 },
-      { name: 'CRM', size: 70, change: -0.8 },
-      { name: 'MCD', size: 65, change: 0.4 },
-      { name: 'V', size: 80, change: 1.5 },
-      { name: 'BA', size: 50, change: -3.2 },
-      { name: 'TRV', size: 40, change: 0.2 },
+      { name: 'UNH', size: 110, change: 0.5 },
+      { name: 'GS', size: 100, change: -1.2 },
+      { name: 'MSFT', size: 95, change: -0.5 },
+      { name: 'HD', size: 90, change: 1.1 },
+      { name: 'CAT', size: 85, change: 2.3 },
+      { name: 'CRM', size: 80, change: -0.8 },
+      { name: 'MCD', size: 75, change: 0.4 },
+      { name: 'V', size: 75, change: 1.5 },
+      { name: 'AMGN', size: 70, change: 0.2 },
+      { name: 'IBM', size: 70, change: 1.4 },
+      { name: 'AXP', size: 65, change: 0.8 },
+      { name: 'BA', size: 60, change: -3.2 },
+      { name: 'TRV', size: 60, change: 0.2 },
+      { name: 'AAPL', size: 58, change: 1.2 },
+      { name: 'JPM', size: 55, change: 0.6 },
+      { name: 'WMT', size: 55, change: 0.4 },
+      { name: 'CVX', size: 50, change: -0.5 },
+      { name: 'JNJ', size: 48, change: -0.2 },
+      { name: 'PG', size: 45, change: 0.1 },
+      { name: 'DIS', size: 40, change: 1.0 },
     ]
   },
   '코스피': {
@@ -99,16 +129,26 @@ const detailedData = {
       { name: '금융', change: '+0.5%', isUp: true },
     ],
     heatmap: [
-      { name: '삼성전자', size: 400, change: 1.2 },
-      { name: 'SK하이닉스', size: 150, change: 3.5 },
-      { name: 'LG에너지솔루션', size: 120, change: -2.1 },
-      { name: '삼성바이오로직스', size: 80, change: 0.5 },
-      { name: '현대차', size: 90, change: 4.2 },
-      { name: '기아', size: 70, change: 2.8 },
-      { name: '셀트리온', size: 60, change: -1.5 },
-      { name: 'POSCO홀딩스', size: 55, change: -0.8 },
-      { name: 'KB금융', size: 45, change: 1.1 },
-      { name: 'NAVER', size: 40, change: -0.5 },
+      { name: '삼성전자', size: 450, change: 1.2 },
+      { name: 'SK하이닉스', size: 240, change: 3.5 },
+      { name: 'LG에너지솔루션', size: 150, change: -2.1 },
+      { name: '삼성바이오로직스', size: 110, change: 0.5 },
+      { name: '현대차', size: 110, change: 4.2 },
+      { name: '기아', size: 85, change: 2.8 },
+      { name: '셀트리온', size: 85, change: -1.5 },
+      { name: 'KB금융', size: 75, change: 1.1 },
+      { name: 'POSCO홀딩스', size: 70, change: -0.8 },
+      { name: 'NAVER', size: 65, change: -0.5 },
+      { name: '신한지주', size: 60, change: 0.8 },
+      { name: '현대모비스', size: 55, change: 1.5 },
+      { name: '삼성SDI', size: 55, change: -1.2 },
+      { name: '하나금융지주', size: 50, change: 0.6 },
+      { name: '카카오', size: 48, change: -0.7 },
+      { name: '포스코퓨처엠', size: 45, change: -1.8 },
+      { name: 'HD현대중공업', size: 45, change: 2.4 },
+      { name: '한화에어로스페이스', size: 42, change: 3.1 },
+      { name: '두산에너빌리티', size: 40, change: 1.9 },
+      { name: 'LG전자', size: 38, change: 0.5 },
     ]
   },
   '코스닥': {
@@ -122,16 +162,26 @@ const detailedData = {
       { name: '반도체 소부장', change: '+1.2%', isUp: true },
     ],
     heatmap: [
-      { name: '에코프로비엠', size: 150, change: -3.5 },
-      { name: '알테오젠', size: 120, change: 4.2 },
-      { name: '에코프로', size: 100, change: -2.8 },
-      { name: 'HLB', size: 90, change: -1.5 },
-      { name: '엔켐', size: 70, change: 2.1 },
+      { name: '알테오젠', size: 220, change: 4.2 },
+      { name: '에코프로비엠', size: 180, change: -3.5 },
+      { name: '에코프로', size: 140, change: -2.8 },
+      { name: 'HLB', size: 120, change: -1.5 },
+      { name: '리가켐바이오', size: 90, change: 2.5 },
+      { name: '엔켐', size: 85, change: 2.1 },
+      { name: '휴젤', size: 75, change: 1.8 },
+      { name: '클래시스', size: 70, change: 3.1 },
       { name: '리노공업', size: 65, change: 1.5 },
-      { name: '셀트리온제약', size: 60, change: -0.8 },
-      { name: 'HPSP', size: 50, change: 0.5 },
-      { name: '레인보우로보틱스', size: 45, change: -1.2 },
-      { name: '클래시스', size: 40, change: 3.1 },
+      { name: '삼천당제약', size: 60, change: -1.2 },
+      { name: '셀트리온제약', size: 58, change: -0.8 },
+      { name: 'HPSP', size: 55, change: 0.5 },
+      { name: '레인보우로보틱스', size: 50, change: -1.2 },
+      { name: '파마리서치', size: 48, change: 1.6 },
+      { name: '이오테크닉스', size: 45, change: 0.9 },
+      { name: '원익IPS', size: 42, change: -0.4 },
+      { name: '동진쎄미켐', size: 40, change: 1.1 },
+      { name: '에스엠', size: 38, change: -1.0 },
+      { name: 'JYP Ent.', size: 36, change: -0.6 },
+      { name: '펄어비스', size: 35, change: 0.3 },
     ]
   }
 }
@@ -168,21 +218,27 @@ const TreemapCell = (props) => {
           cursor: 'pointer',
         }}
       />
-      {width > 45 && height > 30 ? (
+      {width > 35 && height > 22 ? (
         <text 
           x={x + width / 2} 
           y={y + height / 2} 
           textAnchor="middle" 
           fill="#ffffff" 
-          fontSize={width > 80 ? 13 : 11} 
+          fontSize={width > 70 && height > 40 ? 12 : 10} 
           fontWeight="500" 
           pointerEvents="none"
-          style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}
+          style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.6)' }}
         >
-          <tspan x={x + width / 2} dy="-0.2em">{name}</tspan>
-          <tspan x={x + width / 2} dy="1.4em" fontSize={10} fontWeight="normal" fill="rgba(255,255,255,0.9)">
-            {change > 0 ? '+' : ''}{change}%
-          </tspan>
+          {height > 34 ? (
+            <>
+              <tspan x={x + width / 2} dy="-0.2em">{name}</tspan>
+              <tspan x={x + width / 2} dy="1.3em" fontSize={9} fontWeight="normal" fill="rgba(255,255,255,0.92)">
+                {change > 0 ? '+' : ''}{change}%
+              </tspan>
+            </>
+          ) : (
+            <tspan x={x + width / 2} dy="0.3em">{name}</tspan>
+          )}
         </text>
       ) : null}
     </g>
@@ -223,6 +279,7 @@ export default function Dashboard() {
   const isMountedRef = useRef(true);
 
   const HEATMAP_SYMBOL_MAP = {
+    // 코스피
     '삼성전자': '005930.KS',
     'SK하이닉스': '000660.KS',
     'LG에너지솔루션': '373220.KS',
@@ -233,16 +290,38 @@ export default function Dashboard() {
     'POSCO홀딩스': '005490.KS',
     'KB금융': '105560.KS',
     'NAVER': '035420.KS',
-    '에코프로비엠': '247540.KQ',
+    '신한지주': '055550.KS',
+    '현대모비스': '012330.KS',
+    '삼성SDI': '006400.KS',
+    '하나금융지주': '086790.KS',
+    '카카오': '035720.KS',
+    '포스코퓨처엠': '003670.KS',
+    'HD현대중공업': '329180.KS',
+    '한화에어로스페이스': '012450.KS',
+    '두산에너빌리티': '034020.KS',
+    'LG전자': '066570.KS',
+    // 코스닥
     '알테오젠': '196170.KQ',
+    '에코프로비엠': '247540.KQ',
     '에코프로': '086520.KQ',
     'HLB': '028300.KQ',
+    '리가켐바이오': '141080.KQ',
     '엔켐': '348370.KQ',
+    '휴젤': '145020.KQ',
+    '클래시스': '214150.KQ',
     '리노공업': '058470.KQ',
+    '삼천당제약': '000250.KQ',
     '셀트리온제약': '068760.KQ',
     'HPSP': '403870.KQ',
     '레인보우로보틱스': '277810.KQ',
-    '클래시스': '214150.KQ',
+    '파마리서치': '214450.KQ',
+    '이오테크닉스': '039030.KQ',
+    '원익IPS': '240810.KQ',
+    '동진쎄미켐': '005290.KQ',
+    '에스엠': '041510.KQ',
+    'JYP Ent.': '035900.KQ',
+    '펄어비스': '263750.KQ',
+    // 미국
     'BRK.B': 'BRK-B'
   };
 
@@ -573,12 +652,12 @@ export default function Dashboard() {
         {/* Right Column: Heatmap + [추천기능 3] Top Movers Spotlight */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Market Map Heatmap */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: '340px' }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: '440px' }}>
             <div className="flex-between" style={{ marginBottom: '1rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}>시장 맵 (Heatmap)</h2>
             </div>
 
-            <div style={{ flex: 1, backgroundColor: 'var(--surface-color)', borderRadius: '0.5rem', minHeight: '260px' }}>
+            <div style={{ flex: 1, backgroundColor: 'var(--surface-color)', borderRadius: '0.5rem', minHeight: '360px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <Treemap
                   data={currentData.heatmap}

@@ -166,7 +166,7 @@ app.get('/api/quotes', async (req, res) => {
     if (failedSymbols.length > 0) {
       console.warn('Using Google Finance Scraper for remaining symbols...', failedSymbols);
       const mapToGoogle = (sym) => {
-        if (sym.includes('.KS')) return `${sym.split('.')[0]}:KRX`;
+        if (sym.includes('.KS') || sym.includes('.KQ')) return `${sym.split('.')[0]}:KRX`;
         if (sym === '^KS11') return 'KOSPI:KRX';
         if (sym === '^KQ11') return 'KOSDAQ:KRX';
         if (sym === '^GSPC') return '.INX:INDEXSP';
@@ -175,7 +175,7 @@ app.get('/api/quotes', async (req, res) => {
         if (sym === 'GC=F' || sym === 'GCW00') return 'GCW00:COMEX';
         if (sym === 'BTC-USD') return 'BTC-USD';
         
-        const nyseStocks = ['UNH', 'GS', 'HD', 'CAT', 'CRM', 'MCD', 'V', 'BA', 'TRV', 'BRK.B', 'LLY', 'JPM', 'TSM', 'WMT', 'MA', 'XOM', 'JNJ', 'PG', 'ORCL', 'CVX', 'MRK', 'ABBV'];
+        const nyseStocks = ['UNH', 'GS', 'HD', 'CAT', 'CRM', 'MCD', 'V', 'BA', 'TRV', 'BRK.B', 'BRK-B', 'LLY', 'JPM', 'TSM', 'WMT', 'MA', 'XOM', 'JNJ', 'PG', 'ORCL', 'CVX', 'MRK', 'ABBV', 'IBM', 'AXP', 'DIS'];
         if (nyseStocks.includes(sym)) return `${sym}:NYSE`;
         
         return `${sym}:NASDAQ`; // Fallback for US stocks like AAPL, MSFT, NVDA, AMZN, META, GOOGL, ASML, COST, AMD, QCOM, INTC, TSLA, NFLX, PEP, CSCO
