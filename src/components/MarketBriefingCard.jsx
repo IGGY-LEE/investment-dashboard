@@ -540,8 +540,8 @@ export default function MarketBriefingCard({
           )}
         </div>
 
-        {/* 6. [특화 섹션 2] 국내장 선택 시 또는 상시: 외국인·기관 수급 레이더 */}
-        {investorFlow && (
+        {/* 6. [특화 섹션 2] 국내장(코스피/코스닥) 선택 시에만 외국인·기관 수급 레이더 노출 */}
+        {(activeMarket === '코스피' || activeMarket === '코스닥') && investorFlow && (
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', 
