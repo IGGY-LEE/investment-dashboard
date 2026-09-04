@@ -703,6 +703,138 @@ Return ONLY a JSON object:
   }
 });
 
+// 주요 경제 지표 및 증시 이벤트 캘린더 동적 산출 엔진
+function getEconomicCalendar(baseDate = new Date()) {
+  const events = [];
+  
+  const addEvent = (title, shortTitle, year, month, day, hours, minutes, impact, type) => {
+    const eventDate = new Date(year, month, day, hours, minutes, 0);
+    events.push({
+      title,
+      shortTitle,
+      date: eventDate,
+      time: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+      impact,
+      type
+    });
+  };
+
+  const getNthDayOfWeek = (year, month, dayOfWeek, n) => {
+    let count = 0;
+    for (let d = 1; d <= 31; d++) {
+      const dt = new Date(year, month, d);
+      if (dt.getMonth() !== month) break;
+      if (dt.getDay() === dayOfWeek) {
+        count++;
+        if (count === n) return d;
+      }
+    }
+    return null;
+  };
+
+  const getLastDayOfWeek = (year, month, dayOfWeek) => {
+    let last = null;
+    for (let d = 1; d <= 31; d++) {
+      const dt = new Date(year, month, d);
+      if (dt.getMonth() !== month) break;
+      if (dt.getDay() === dayOfWeek) last = d;
+    }
+    return last;
+  };
+
+  const curY = baseDate.getFullYear();
+  const curM = baseDate.getMonth();
+
+  for (let mOffset = 0; mOffset <= 2; mOffset++) {
+    const target = new Date(curY, curM + mOffset, 1);
+    const y = target.getFullYear();
+    const m = target.getMonth();
+    const monthNum = m + 1;
+
+    // 1. 미국 비농업 고용보고서 (첫째 주 금요일 21:30)
+    const nfpDay = getNthDayOfWeek(y, m, 5, 1);
+    if (nfpDay) {
+      addEvent(`미국 ${monthNum === 1 ? 12 : monthNum - 1}월 고용보고서(NFP) 발표`, '미 고용보고서', y, m, nfpDay, 21, 30, 'High', '고용');
+    }
+
+    // 2. 한국 선물/옵션 만기일 (둘째 주 목요일 15:30)
+    const krExpiryDay = getNthDayOfWeek(y, m, 4, 2);
+    if (krExpiryDay) {
+      const isQuad = [3, 6, 9, 12].includes(monthNum);
+      addEvent(
+        isQuad ? '한국 선물/옵션 동시 만기일' : '한국 옵션 만기일',
+        isQuad ? '국내 선물옵션만기' : '국내 옵션만기',
+        y, m, krExpiryDay, 15, 30, 'High', '만기일'
+      );
+    }
+
+    // 3. 미국 소비자물가지수 (CPI) 발표 (통상 10일~14일경 2번째 수요일 전후 21:30)
+    const cpiWed = getNthDayOfWeek(y, m, 3, 2);
+    const cpiDay = cpiWed && cpiWed >= 9 && cpiWed <= 15 ? cpiWed : 11;
+    addEvent(`미국 ${monthNum === 1 ? 12 : monthNum - 1}월 소비자물가지수(CPI)`, '미 CPI 발표', y, m, cpiDay, 21, 30, 'High', '매크로');
+
+    // 4. 미국 생산자물가지수 (PPI) 발표 (CPI 다음 날 21:30)
+    addEvent(`미국 ${monthNum === 1 ? 12 : monthNum - 1}월 생산자물가지수(PPI)`, '미 PPI 발표', y, m, cpiDay + 1, 21, 30, 'Medium', '매크로');
+
+    // 5. 미국 선물/옵션 만기일 (셋째 주 금요일 22:30)
+    const usExpiryDay = getNthDayOfWeek(y, m, 5, 3);
+    if (usExpiryDay) {
+      addEvent('미국 선물/옵션 동시 만기일', '미 선물옵션만기', y, m, usExpiryDay, 22, 30, 'High', '만기일');
+    }
+
+    // 6. 미국 FOMC 성명서 & 금리결정 (1, 3, 5, 6, 7, 9, 11, 12월)
+    if ([1, 3, 5, 6, 7, 9, 11, 12].includes(monthNum)) {
+      const fomcWed = getNthDayOfWeek(y, m, 3, monthNum === 5 || monthNum === 11 ? 1 : monthNum === 6 || monthNum === 12 ? 2 : 3);
+      if (fomcWed) {
+        addEvent(`미국 ${monthNum}월 FOMC 금리결정`, '미 FOMC 결정', y, m, fomcWed + 1, 3, 0, 'High', '통화정책');
+      }
+    }
+
+    // 7. 미국 근원 PCE 물가지수 발표 (마지막 금요일 21:30)
+    const pceDay = getLastDayOfWeek(y, m, 5);
+    if (pceDay) {
+      addEvent(`미국 ${monthNum === 1 ? 12 : monthNum - 1}월 근원 PCE 물가지수`, '미 PCE 발표', y, m, pceDay, 21, 30, 'High', '물가');
+    }
+  }
+
+  const todayStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), 0, 0, 0);
+  const nowMs = baseDate.getTime();
+
+  const upcoming = events
+    .filter(e => {
+      return e.date.getTime() >= (nowMs - 4 * 3600 * 1000);
+    })
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map(e => {
+      const eventStart = new Date(e.date.getFullYear(), e.date.getMonth(), e.date.getDate(), 0, 0, 0);
+      const diffDays = Math.round((eventStart - todayStart) / (1000 * 60 * 60 * 24));
+      
+      let dDayText = '';
+      const isToday = diffDays === 0;
+      if (isToday) {
+        dDayText = `오늘 ${e.time}`;
+      } else if (diffDays === 1) {
+        dDayText = `내일 ${e.time}`;
+      } else {
+        dDayText = `D-${diffDays}`;
+      }
+
+      return {
+        title: e.title,
+        shortTitle: e.shortTitle,
+        time: e.time,
+        impact: e.impact,
+        type: e.type,
+        dateStr: `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}-${String(e.date.getDate()).padStart(2, '0')}`,
+        diffDays,
+        dDayText,
+        isToday
+      };
+    });
+
+  return upcoming;
+}
+
 // AI 실시간 시장 브리핑 (Market Briefing) 엔드포인트
 app.get('/api/briefing', async (req, res) => {
   const cacheKey = 'market_briefing_latest';
@@ -895,6 +1027,7 @@ app.get('/api/briefing', async (req, res) => {
       quickPulse: pulseQuotes,
       riskLevel: isSPUp ? "보통" : "주의",
       breakingNews,
+      upcomingEvents: getEconomicCalendar(),
       quotes: quotes.map(q => ({ symbol: q.symbol, name: q.shortName || q.symbol, price: q.regularMarketPrice, change: q.regularMarketChangePercent })),
       updatedAt: getKSTTimeString(),
       aiModel: aiClient ? 'Gemini 3.8 Flash' : 'Smart Template'
