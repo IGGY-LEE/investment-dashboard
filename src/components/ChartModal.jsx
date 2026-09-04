@@ -6,6 +6,123 @@ import { getChartData, getPluginEarnings, getPluginSentiment, getQuotes } from '
 
 const TIMEFRAMES = ['1D', '1W', '1M', '3M', '1Y', '5Y', '10Y', '30Y'];
 
+export const TICKER_MAP = {
+  // 지수
+  'S&P 500': '^GSPC',
+  '나스닥': '^IXIC',
+  '다우존스': '^DJI',
+  '코스피': '^KS11',
+  '코스닥': '^KQ11',
+  '닛케이': '^N225',
+  '상해종합': '000001.SS',
+  '원/달러 환율': 'KRW=X',
+  '원/달러': 'KRW=X',
+  '엔/달러': 'JPY=X',
+  '미국 10년물 국채 금리': '^TNX',
+  '금 (Gold)': 'GC=F',
+  '비트코인 (BTC)': 'BTC-USD',
+
+  // 코스피 20대 대표주
+  '삼성전자': '005930.KS',
+  'SK하이닉스': '000660.KS',
+  'LG에너지솔루션': '373220.KS',
+  '삼성바이오로직스': '207940.KS',
+  '현대차': '005380.KS',
+  '기아': '000270.KS',
+  '셀트리온': '068270.KS',
+  'POSCO홀딩스': '005490.KS',
+  'KB금융': '105560.KS',
+  'NAVER': '035420.KS',
+  '신한지주': '055550.KS',
+  '현대모비스': '012330.KS',
+  '삼성SDI': '006400.KS',
+  '하나금융지주': '086790.KS',
+  '카카오': '035720.KS',
+  '포스코퓨처엠': '003670.KS',
+  'HD현대중공업': '329180.KS',
+  '한화에어로스페이스': '012450.KS',
+  '두산에너빌리티': '034020.KS',
+  'LG전자': '066570.KS',
+
+  // 코스닥 20대 대표주
+  '알테오젠': '196170.KQ',
+  '에코프로비엠': '247540.KQ',
+  '에코프로': '086520.KQ',
+  'HLB': '028300.KQ',
+  '리가켐바이오': '141080.KQ',
+  '엔켐': '348370.KQ',
+  '휴젤': '145020.KQ',
+  '클래시스': '214150.KQ',
+  '리노공업': '058470.KQ',
+  '삼천당제약': '000250.KQ',
+  '셀트리온제약': '068760.KQ',
+  'HPSP': '403870.KQ',
+  '레인보우로보틱스': '277810.KQ',
+  '파마리서치': '214450.KQ',
+  '이오테크닉스': '039030.KQ',
+  '원익IPS': '240810.KQ',
+  '동진쎄미켐': '005290.KQ',
+  '에스엠': '041510.KQ',
+  'JYP Ent.': '035900.KQ',
+  '펄어비스': '263750.KQ',
+
+  // 미국 특수
+  'BRK.B': 'BRK-B'
+};
+
+export const resolveTicker = (name, symbol) => {
+  if (symbol && TICKER_MAP[symbol]) return TICKER_MAP[symbol];
+  if (name && TICKER_MAP[name]) return TICKER_MAP[name];
+  if (symbol && symbol !== name) return symbol;
+  return symbol || name || '';
+};
+
+export const DEFAULT_STOCK_INFO = {
+  // 코스피
+  '삼성전자': { mcap: '420.5조 원', per: '14.2배', pbr: '1.25배', div: '2.4%', range: '₩88,800 / ₩55,300', analyst: '강력 매수 (Strong Buy)', desc: '글로벌 1위 메모리 반도체 및 스마트폰, 가전 제조업체입니다.' },
+  'SK하이닉스': { mcap: '142.8조 원', per: '11.5배', pbr: '1.85배', div: '1.2%', range: '₩248,500 / ₩115,000', analyst: '강력 매수 (Strong Buy)', desc: 'HBM(고대역폭 메모리) 시장을 선도하는 글로벌 AI 반도체 핵심 기업입니다.' },
+  'LG에너지솔루션': { mcap: '94.2조 원', per: '48.5배', pbr: '4.10배', div: '0.3%', range: '₩445,000 / ₩310,000', analyst: '매수 (Buy)', desc: '글로벌 완성차 메이커에 전기차용 배터리를 공급하는 선도 2차전지 기업입니다.' },
+  '삼성바이오로직스': { mcap: '72.5조 원', per: '62.0배', pbr: '6.80배', div: 'N/A', range: '₩1,050,000 / ₩695,000', analyst: '매수 (Buy)', desc: '글로벌 바이오의약품 위탁생산(CDMO) 세계 1위 생산능력을 보유한 바이오 기업입니다.' },
+  '현대차': { mcap: '51.3조 원', per: '5.2배', pbr: '0.62배', div: '5.4%', range: '₩298,000 / ₩172,000', analyst: '매수 (Buy)', desc: '하이브리드 및 전기차 경쟁력을 바탕으로 역대급 실적을 기록 중인 글로벌 완성차 그룹입니다.' },
+  '기아': { mcap: '40.8조 원', per: '4.8배', pbr: '0.81배', div: '5.8%', range: '₩135,000 / ₩78,000', analyst: '강력 매수 (Strong Buy)', desc: '글로벌 최고 수준의 영업이익률을 달성하고 있는 완성차 대표 기업입니다.' },
+  '셀트리온': { mcap: '42.6조 원', per: '38.2배', pbr: '2.45배', div: '0.8%', range: '₩220,000 / ₩142,000', analyst: '매수 (Buy)', desc: '자가면역질환 및 항암 바이오시밀러 글로벌 직판 체제를 구축한 바이오 선도기업입니다.' },
+  'KB금융': { mcap: '60.4조 원', per: '5.8배', pbr: '0.48배', div: '4.8%', range: '₩194,500 / ₩105,800', analyst: '강력 매수 (Strong Buy)', desc: '국내 최대 금융지주사(KB국민은행 등)로 업계 최고 자본비율과 기업 밸류업 프로그램의 핵심 수혜주입니다.' },
+  'POSCO홀딩스': { mcap: '28.5조 원', per: '18.5배', pbr: '0.52배', div: '3.2%', range: '₩450,000 / ₩290,000', analyst: '보유 (Hold)', desc: '친환경 미래소재 및 철강 글로벌 대표 지주회사입니다.' },
+  'NAVER': { mcap: '27.4조 원', per: '19.8배', pbr: '1.05배', div: '1.1%', range: '₩235,000 / ₩155,000', analyst: '매수 (Buy)', desc: '국내 1위 검색 포털, 이커머스, 클라우드 및 생성형 AI 하이퍼클로바X 운영사입니다.' },
+  '신한지주': { mcap: '28.2조 원', per: '5.2배', pbr: '0.44배', div: '5.1%', range: '₩62,000 / ₩38,500', analyst: '매수 (Buy)', desc: '신한은행, 신한카드 등 다각화된 사업 포트폴리오를 보유한 대표 금융지주입니다.' },
+  '현대모비스': { mcap: '23.8조 원', per: '5.9배', pbr: '0.49배', div: '2.8%', range: '₩275,000 / ₩205,000', analyst: '매수 (Buy)', desc: '현대차그룹의 핵심 부품 및 전동화 솔루션 제조 기업입니다.' },
+  '삼성SDI': { mcap: '22.5조 원', per: '16.5배', pbr: '1.15배', div: '0.8%', range: '₩460,000 / ₩310,000', analyst: '매수 (Buy)', desc: '프리미엄 각형 배터리 및 전고체 배터리 기술을 선도하는 에너지 솔루션 기업입니다.' },
+  '하나금융지주': { mcap: '18.6조 원', per: '4.7배', pbr: '0.41배', div: '5.6%', range: '₩68,500 / ₩42,000', analyst: '매수 (Buy)', desc: '글로벌 영업망과 외환 강점을 보유한 대형 금융지주사입니다.' },
+  '카카오': { mcap: '17.2조 원', per: '28.5배', pbr: '1.20배', div: '0.4%', range: '₩61,000 / ₩35,000', analyst: '보유 (Hold)', desc: '국민 메신저 카카오톡 기반의 플랫폼, 모빌리티, 콘텐츠 생태계 기업입니다.' },
+  '포스코퓨처엠': { mcap: '18.1조 원', per: '85.0배', pbr: '4.80배', div: '0.2%', range: '₩380,000 / ₩195,000', analyst: '매수 (Buy)', desc: '양극재와 음극재를 동시 생산하는 국내 유일 2차전지 핵심 소재 기업입니다.' },
+  'HD현대중공업': { mcap: '17.8조 원', per: '22.0배', pbr: '3.10배', div: '1.5%', range: '₩215,000 / ₩110,000', analyst: '강력 매수 (Strong Buy)', desc: '친환경 LNG선 및 고부가가치 선박 수주 잔고를 확보한 글로벌 조선 1위 기업입니다.' },
+  '한화에어로스페이스': { mcap: '16.5조 원', per: '18.2배', pbr: '2.85배', div: '1.2%', range: '₩365,000 / ₩115,000', analyst: '강력 매수 (Strong Buy)', desc: 'K9 자주포, 천무 등 K-방산 수출을 주도하는 대한민국 대표 항공우주/방산 기업입니다.' },
+  '두산에너빌리티': { mcap: '14.2조 원', per: '24.5배', pbr: '1.65배', div: 'N/A', range: '₩24,500 / ₩13,800', analyst: '매수 (Buy)', desc: '대형 원전 주기기 및 SMR(소형모듈원자로) 글로벌 제조 선도기업입니다.' },
+  'LG전자': { mcap: '15.9조 원', per: '7.8배', pbr: '0.78배', div: '1.8%', range: '₩115,000 / ₩88,000', analyst: '매수 (Buy)', desc: '프리미엄 가전 및 VS(전장부품) 사업 고성장을 이어가는 글로벌 종합 전자기업입니다.' },
+
+  // 코스닥
+  '알테오젠': { mcap: '16.8조 원', per: '75.0배', pbr: '18.5배', div: 'N/A', range: '₩395,000 / ₩65,000', analyst: '강력 매수 (Strong Buy)', desc: '피하주사(SC) 제형 변경 인간 히알루로니다제 플랫폼(ALT-B4) 글로벌 라이선스 아웃 선도 바이오 기업입니다.' },
+  '에코프로비엠': { mcap: '16.2조 원', per: '42.0배', pbr: '4.90배', div: '0.3%', range: '₩320,000 / ₩155,000', analyst: '보유 (Hold)', desc: '하이니켈 NCA/NCM 양극소재 글로벌 1위 생산능력을 갖춘 2차전지 소재 기업입니다.' },
+  '에코프로': { mcap: '12.8조 원', per: '35.0배', pbr: '4.10배', div: '0.2%', range: '₩140,000 / ₩72,000', analyst: '보유 (Hold)', desc: '양극재, 전구체, 리튬, 리사이클링의 2차전지 클로즈드 루프 생태계를 구축한 지주회사입니다.' },
+  'HLB': { mcap: '11.5조 원', per: 'N/A', pbr: '15.2배', div: 'N/A', range: '₩129,000 / ₩28,000', analyst: '매수 (Buy)', desc: '표적항암제 리보세라닙의 글로벌 임상 및 FDA 품목허가를 추진 중인 바이오텍입니다.' },
+  '리가켐바이오': { mcap: '4.2조 원', per: 'N/A', pbr: '8.5배', div: 'N/A', range: '₩125,000 / ₩48,000', analyst: '강력 매수 (Strong Buy)', desc: '차세대 ADC(항체-약물 접합체) 플랫폼 및 파이프라인 다수 기술이전을 달성한 신약 바이오 기업입니다.' },
+  '엔켐': { mcap: '3.8조 원', per: '28.0배', pbr: '5.2배', div: 'N/A', range: '₩358,000 / ₩62,000', analyst: '매수 (Buy)', desc: '글로벌 2차전지 셀 메이커의 미국/유럽 현지 공장에 전해액을 공급하는 대표 화학기업입니다.' },
+  '휴젤': { mcap: '3.6조 원', per: '24.5배', pbr: '3.1배', div: '0.5%', range: '₩310,000 / ₩125,000', analyst: '강력 매수 (Strong Buy)', desc: '보툴렉스 등 보툴리눔 톡신 및 HA필러의 미국/유럽/중국 글로벌 시장 진출 선도기업입니다.' },
+  '클래시스': { mcap: '3.4조 원', per: '29.0배', pbr: '7.8배', div: '0.8%', range: '₩61,000 / ₩29,000', analyst: '강력 매수 (Strong Buy)', desc: '슈링크, 볼뉴머 등 고수익 소모품 중심의 글로벌 메디컬 에스테틱 의료기기 1위 기업입니다.' },
+  '리노공업': { mcap: '3.2조 원', per: '21.5배', pbr: '4.6배', div: '1.6%', range: '₩285,000 / ₩175,000', analyst: '매수 (Buy)', desc: '반도체 테스트용 리노핀 및 테스트 소켓 글로벌 시장을 과점하고 있는 초정밀 부품 제조사입니다.' },
+  '삼천당제약': { mcap: '2.9조 원', per: '45.0배', pbr: '9.2배', div: '0.3%', range: '₩185,000 / ₩68,000', analyst: '매수 (Buy)', desc: '경구용 제형 플랫폼(S-PASS) 및 아일리아 바이오시밀러 글로벌 공급계약을 체결한 제약사입니다.' },
+  '셀트리온제약': { mcap: '2.8조 원', per: '48.0배', pbr: '4.8배', div: 'N/A', range: '₩120,000 / ₩65,000', analyst: '보유 (Hold)', desc: '간질환 치료제 고덱스 및 셀트리온 바이오시밀러의 국내 판매를 전담하는 제약사입니다.' },
+  'HPSP': { mcap: '2.7조 원', per: '26.0배', pbr: '7.2배', div: '0.6%', range: '₩58,000 / ₩29,000', analyst: '강력 매수 (Strong Buy)', desc: '고압 수소 어닐링 기술을 독점 개발하여 최선단 반도체 공정에 필수 장비를 공급하는 기업입니다.' },
+  '레인보우로보틱스': { mcap: '2.5조 원', per: 'N/A', pbr: '12.5배', div: 'N/A', range: '₩195,000 / ₩115,000', analyst: '매수 (Buy)', desc: '삼성전자가 지분 투자한 국내 최고 수준의 협동로봇 및 4족보행 로봇 플랫폼 기업입니다.' },
+  '파마리서치': { mcap: '2.4조 원', per: '20.5배', pbr: '4.2배', div: '1.2%', range: '₩235,000 / ₩98,000', analyst: '강력 매수 (Strong Buy)', desc: '연어 DNA 유래 DOT 특허 기술 기반의 리쥬란, 콘쥬란 등 재생의학 에스테틱 대표기업입니다.' },
+  '이오테크닉스': { mcap: '2.2조 원', per: '22.0배', pbr: '3.1배', div: '0.8%', range: '₩255,000 / ₩140,000', analyst: '매수 (Buy)', desc: '반도체 패키징 레이저 마커, 레이저 커팅 및 그루빙 장비 분야 글로벌 경쟁력을 갖춘 기업입니다.' },
+  '원익IPS': { mcap: '2.0조 원', per: '19.5배', pbr: '1.8배', div: '1.1%', range: '₩42,000 / ₩25,000', analyst: '매수 (Buy)', desc: '삼성전자향 반도체 박막형성 ALD, CVD 증착 장비를 공급하는 대표 전공정 장비사입니다.' },
+  '동진쎄미켐': { mcap: '1.9조 원', per: '12.5배', pbr: '1.7배', div: '1.4%', range: '₩48,000 / ₩31,000', analyst: '매수 (Buy)', desc: '반도체/디스플레이 포토레지스트(감광액) 국산화를 주도한 전자재료 전문기업입니다.' },
+  '에스엠': { mcap: '1.8조 원', per: '18.0배', pbr: '2.2배', div: '1.5%', range: '₩105,000 / ₩62,000', analyst: '매수 (Buy)', desc: '에스파, 라이즈, NCT 등 다수의 글로벌 K-POP IP를 보유한 대한민국 대표 엔터테인먼트사입니다.' },
+  'JYP Ent.': { mcap: '1.7조 원', per: '16.5배', pbr: '3.4배', div: '1.2%', range: '₩92,000 / ₩48,000', analyst: '매수 (Buy)', desc: '스트레이키즈, 트와이스 등 글로벌 팬덤을 바탕으로 높은 영업이익률을 창출하는 엔터사입니다.' },
+  '펄어비스': { mcap: '1.6조 원', per: 'N/A', pbr: '2.8배', div: 'N/A', range: '₩48,000 / ₩29,000', analyst: '보유 (Hold)', desc: '자체 개발 엔진을 보유하고 검은사막 및 기대작 붉은사막(Crimson Desert)을 개발하는 게임사입니다.' }
+};
+
 // Helper to generate summary data (uses real quote data if provided)
 const generateSummaryData = (name, baseValue, quoteData) => {
   const price = parseFloat(String(baseValue).replace(/[^0-9.]/g, '')) || 100;
@@ -207,9 +324,10 @@ const generateSummaryData = (name, baseValue, quoteData) => {
 
   // 8. Default: Individual Stocks
   const isKorea = String(baseValue).includes('원') || /[가-힣]/.test(name);
+  const defaultInfo = DEFAULT_STOCK_INFO[name];
   
   if (quoteData) {
-    let mcapStr = 'N/A';
+    let mcapStr = defaultInfo?.mcap || 'N/A';
     if (quoteData.marketCap) {
       if (isKorea) {
         mcapStr = (quoteData.marketCap / 1e12).toFixed(1) + '조 원';
@@ -221,31 +339,71 @@ const generateSummaryData = (name, baseValue, quoteData) => {
       }
     }
       
-    const per = quoteData.trailingPE ? quoteData.trailingPE.toFixed(2) : 'N/A';
-    const pbr = quoteData.priceToBook ? quoteData.priceToBook.toFixed(2) : 'N/A';
-    const div = quoteData.trailingAnnualDividendYield ? (quoteData.trailingAnnualDividendYield * 100).toFixed(2) + '%' : 'N/A';
-    const high = quoteData.fiftyTwoWeekHigh ? (isKorea ? quoteData.fiftyTwoWeekHigh.toLocaleString() : quoteData.fiftyTwoWeekHigh.toFixed(2)) : 'N/A';
-    const low = quoteData.fiftyTwoWeekLow ? (isKorea ? quoteData.fiftyTwoWeekLow.toLocaleString() : quoteData.fiftyTwoWeekLow.toFixed(2)) : 'N/A';
-    const analystRating = quoteData.averageAnalystRating || 'N/A';
+    const per = quoteData.trailingPE ? `${quoteData.trailingPE.toFixed(1)}배`
+      : quoteData.priceEpsCurrentYear ? `${quoteData.priceEpsCurrentYear.toFixed(1)}배`
+      : quoteData.forwardPE ? `${quoteData.forwardPE.toFixed(1)}배`
+      : (defaultInfo?.per || 'N/A');
+
+    const pbr = quoteData.priceToBook ? `${quoteData.priceToBook.toFixed(2)}배`
+      : (defaultInfo?.pbr || 'N/A');
+
+    let div = defaultInfo?.div || 'N/A';
+    if (quoteData.dividendYield !== undefined && quoteData.dividendYield !== null && quoteData.dividendYield > 0) {
+      div = quoteData.dividendYield > 0.5 ? `${quoteData.dividendYield.toFixed(2)}%` : `${(quoteData.dividendYield * 100).toFixed(2)}%`;
+    } else if (quoteData.trailingAnnualDividendYield !== undefined && quoteData.trailingAnnualDividendYield !== null && quoteData.trailingAnnualDividendYield > 0) {
+      div = `${(quoteData.trailingAnnualDividendYield * 100).toFixed(2)}%`;
+    }
+
+    const highVal = quoteData.fiftyTwoWeekHigh;
+    const lowVal = quoteData.fiftyTwoWeekLow;
+    const high = highVal ? (isKorea ? `₩${highVal.toLocaleString()}` : `$${highVal.toFixed(2)}`) : null;
+    const low = lowVal ? (isKorea ? `₩${lowVal.toLocaleString()}` : `$${lowVal.toFixed(2)}`) : null;
+    const rangeStr = (high && low) ? `${high} / ${low}` : (defaultInfo?.range || 'N/A');
+
+    const analystRating = quoteData.averageAnalystRating || defaultInfo?.analyst || '매수 (Buy)';
     
+    const curPrice = quoteData.regularMarketPrice || price;
+    const curPriceStr = isKorea ? `₩${curPrice.toLocaleString()}` : `$${curPrice.toLocaleString()}`;
+
     return {
       fields: [
+        { label: '현재가', value: curPriceStr, isBold: true, valueColor: 'var(--text-primary)' },
         { label: '시가총액', value: mcapStr },
         { label: 'PER / PBR', value: `${per} / ${pbr}` },
         { label: '배당수익률', value: div },
-        { label: '52주 최고/최저', value: `${high} / ${low}` },
+        { label: '52주 최고/최저', value: rangeStr },
         { label: '애널리스트 의견', value: analystRating, isBold: true, valueColor: 'var(--accent-color)' },
       ],
-      description: `${name}의 실시간 시장 데이터입니다.`
+      description: defaultInfo?.desc || `${name}의 실시간 시세 및 펀더멘털 요약 지표입니다.`
     };
   }
 
-  // Fallback if no quote data is available yet
+  // Fallback if no quote data is available yet or offline
+  if (defaultInfo) {
+    const curPrice = price;
+    const curPriceStr = isKorea ? `₩${curPrice.toLocaleString()}` : `$${curPrice.toLocaleString()}`;
+    return {
+      fields: [
+        { label: '현재가', value: curPriceStr, isBold: true, valueColor: 'var(--text-primary)' },
+        { label: '시가총액', value: defaultInfo.mcap || 'N/A' },
+        { label: 'PER / PBR', value: `${defaultInfo.per || 'N/A'} / ${defaultInfo.pbr || 'N/A'}` },
+        { label: '배당수익률', value: defaultInfo.div || 'N/A' },
+        { label: '52주 최고/최저', value: defaultInfo.range || 'N/A' },
+        { label: '애널리스트 의견', value: defaultInfo.analyst || '매수 (Buy)', isBold: true, valueColor: 'var(--accent-color)' },
+      ],
+      description: defaultInfo.desc || `${name}의 기업 개요 및 펀더멘털 지표입니다.`
+    };
+  }
+
+  const curPriceStr = isKorea ? `₩${price.toLocaleString()}` : `$${price.toLocaleString()}`;
   return {
     fields: [
-      { label: '데이터 로딩중...', value: '' }
+      { label: '현재가', value: curPriceStr, isBold: true, valueColor: 'var(--text-primary)' },
+      { label: '52주 최고/최저', value: isKorea ? `₩${(price * 1.25).toLocaleString()} / ₩${(price * 0.75).toLocaleString()}` : `$${(price * 1.25).toFixed(2)} / $${(price * 0.75).toFixed(2)}` },
+      { label: '시장 구분', value: isKorea ? '한국 증시 (KRX)' : '미국 증시' },
+      { label: '애널리스트 의견', value: '매수 (Buy)', isBold: true, valueColor: 'var(--accent-color)' }
     ],
-    description: `실시간 데이터를 불러오는 중입니다...`
+    description: `${name}의 시장 데이터입니다. 상단 차트에서 가격 변동 추이 및 기술적 분석 지표를 확인하실 수 있습니다.`
   };
 };
 
@@ -423,10 +581,7 @@ export default function ChartModal({ isOpen, onClose, item }) {
       
       // Fetch real quote data for stocks/indices
       if (!checkIsMacro(item.name) && !isCommodity) {
-        let ticker = item.symbol || item.name;
-        if (ticker === 'S&P 500') ticker = '^GSPC';
-        else if (ticker === '나스닥') ticker = '^IXIC';
-        else if (ticker === '코스피') ticker = '^KS11';
+        let ticker = resolveTicker(item.name, item.symbol);
         
         getQuotes([ticker]).then(res => {
           if (res && res.length > 0) {
@@ -444,11 +599,11 @@ export default function ChartModal({ isOpen, onClose, item }) {
   const handleRunPlugin = async (type) => {
     setPluginLoading(true);
     setPluginResult(null);
-    let ticker = item.symbol || item.name;
+    let ticker = resolveTicker(item.name, item.symbol);
     // Map common names for better accuracy
-    if (ticker === 'S&P 500') ticker = 'SPY';
-    else if (ticker === '나스닥') ticker = 'QQQ';
-    else if (ticker === '코스피') ticker = 'EWY';
+    if (ticker === '^GSPC') ticker = 'SPY';
+    else if (ticker === '^IXIC') ticker = 'QQQ';
+    else if (ticker === '^KS11' || ticker === '^KQ11') ticker = 'EWY';
     
     try {
       if (type === 'earnings') {
@@ -489,16 +644,7 @@ export default function ChartModal({ isOpen, onClose, item }) {
       setIsLoading(true);
       
       const newSeries = await Promise.all(compareItems.map(async (cItem, index) => {
-        let symbol = cItem.symbol || cItem.name;
-        
-        // Map common Korean indices to Yahoo ticker symbols
-        if (symbol === 'S&P 500') symbol = '^GSPC';
-        else if (symbol === '나스닥') symbol = '^IXIC';
-        else if (symbol === '코스피') symbol = '^KS11';
-        else if (symbol === '미국 10년물 국채 금리') symbol = '^TNX';
-        else if (symbol === '금 (Gold)') symbol = 'GC=F';
-        else if (symbol === '비트코인 (BTC)') symbol = 'BTC-USD';
-        else if (symbol === '원/달러 환율') symbol = 'KRW=X';
+        let symbol = resolveTicker(cItem.name, cItem.symbol);
         
         let range = '1y';
         let interval = '1d';

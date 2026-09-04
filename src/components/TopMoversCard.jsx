@@ -5,9 +5,9 @@ export default function TopMoversCard({ heatmapItems = [], onSelectStock }) {
   const [activeTab, setActiveTab] = useState('gainers'); // 'gainers' | 'losers'
 
   // Extract and sort movers from the current active heatmap list
-  const { topGainers, topLosers } = useMemo(() => {
+  const { topGainers, topLosers, totalSize } = useMemo(() => {
     if (!heatmapItems || heatmapItems.length === 0) {
-      return { topGainers: [], topLosers: [] };
+      return { topGainers: [], topLosers: [], totalSize: 0 };
     }
 
     // Filter valid items
@@ -17,9 +17,18 @@ export default function TopMoversCard({ heatmapItems = [], onSelectStock }) {
 
     const gainers = sortedByChange.slice(0, 3);
     const losers = [...sortedByChange].reverse().slice(0, 3);
+    const sumSize = heatmapItems.reduce((acc, cur) => acc + (Number(cur.size) || 0), 0);
 
-    return { topGainers: gainers, topLosers: losers };
+    return { topGainers: gainers, topLosers: losers, totalSize: sumSize };
   }, [heatmapItems]);
+
+  const formatPrice = (item) => {
+    if (item.price === undefined || item.price === null) return null;
+    const num = Number(item.price);
+    if (isNaN(num)) return null;
+    const isKorean = (item.symbol && (item.symbol.endsWith('.KS') || item.symbol.endsWith('.KQ'))) || /[가-힣]/.test(item.name);
+    return isKorean ? `₩${num.toLocaleString('ko-KR')}` : `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const currentList = activeTab === 'gainers' ? topGainers : topLosers;
 
@@ -85,6 +94,11 @@ export default function TopMoversCard({ heatmapItems = [], onSelectStock }) {
           currentList.map((item, idx) => {
             const isUp = item.change >= 0;
             const rank = idx + 1;
+            const weightPct = totalSize > 0 && item.size 
+              ? ((item.size / totalSize) * 100).toFixed(1) 
+              : null;
+            const priceStr = formatPrice(item);
+
             return (
               <div
                 key={idx}
@@ -118,8 +132,14 @@ export default function TopMoversCard({ heatmapItems = [], onSelectStock }) {
                   </span>
                   <div>
                     <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{item.name}</div>
-                    <div className="text-secondary" style={{ fontSize: '0.75rem' }}>
-                      {item.price ? `${typeof item.price === 'number' ? item.price.toLocaleString() : item.price}` : `시총 비중 ${item.size}`}
+                    <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      {weightPct && (
+                        <span>
+                          시총 비중 <strong style={{ color: 'var(--text-color)', fontWeight: '600' }}>{weightPct}%</strong>
+                        </span>
+                      )}
+                      {weightPct && priceStr && <span style={{ opacity: 0.5 }}>·</span>}
+                      {priceStr && <span style={{ color: 'var(--text-secondary)' }}>{priceStr}</span>}
                     </div>
                   </div>
                 </div>

@@ -29,26 +29,26 @@ const detailedData = {
       { name: '금융 (Financials)', change: '+0.8%', isUp: true },
     ],
     heatmap: [
-      { name: 'AAPL', size: 320, change: 1.2 },
-      { name: 'MSFT', size: 310, change: -0.5 },
-      { name: 'NVDA', size: 300, change: 3.1 },
-      { name: 'AMZN', size: 210, change: 0.8 },
-      { name: 'GOOGL', size: 190, change: 0.5 },
-      { name: 'META', size: 160, change: -1.2 },
-      { name: 'BRK.B', size: 110, change: 0.2 },
-      { name: 'LLY', size: 95, change: 2.5 },
-      { name: 'AVGO', size: 90, change: -2.1 },
-      { name: 'TSLA', size: 90, change: 1.5 },
-      { name: 'JPM', size: 85, change: 0.6 },
-      { name: 'WMT', size: 80, change: 0.4 },
-      { name: 'V', size: 75, change: 0.8 },
-      { name: 'UNH', size: 70, change: -0.3 },
-      { name: 'XOM', size: 65, change: -0.7 },
-      { name: 'MA', size: 65, change: 0.5 },
-      { name: 'COST', size: 60, change: 0.9 },
-      { name: 'JNJ', size: 60, change: -0.2 },
-      { name: 'HD', size: 55, change: 0.3 },
-      { name: 'PG', size: 50, change: 0.1 },
+      { name: 'AAPL', symbol: 'AAPL', size: 320, change: 1.2 },
+      { name: 'MSFT', symbol: 'MSFT', size: 310, change: -0.5 },
+      { name: 'NVDA', symbol: 'NVDA', size: 300, change: 3.1 },
+      { name: 'AMZN', symbol: 'AMZN', size: 210, change: 0.8 },
+      { name: 'GOOGL', symbol: 'GOOGL', size: 190, change: 0.5 },
+      { name: 'META', symbol: 'META', size: 160, change: -1.2 },
+      { name: 'BRK.B', symbol: 'BRK-B', size: 110, change: 0.2 },
+      { name: 'LLY', symbol: 'LLY', size: 95, change: 2.5 },
+      { name: 'AVGO', symbol: 'AVGO', size: 90, change: -2.1 },
+      { name: 'TSLA', symbol: 'TSLA', size: 90, change: 1.5 },
+      { name: 'JPM', symbol: 'JPM', size: 85, change: 0.6 },
+      { name: 'WMT', symbol: 'WMT', size: 80, change: 0.4 },
+      { name: 'V', symbol: 'V', size: 75, change: 0.8 },
+      { name: 'UNH', symbol: 'UNH', size: 70, change: -0.3 },
+      { name: 'XOM', symbol: 'XOM', size: 65, change: -0.7 },
+      { name: 'MA', symbol: 'MA', size: 65, change: 0.5 },
+      { name: 'COST', symbol: 'COST', size: 60, change: 0.9 },
+      { name: 'JNJ', symbol: 'JNJ', size: 60, change: -0.2 },
+      { name: 'HD', symbol: 'HD', size: 55, change: 0.3 },
+      { name: 'PG', symbol: 'PG', size: 50, change: 0.1 },
     ]
   },
   '나스닥': {
@@ -62,26 +62,26 @@ const detailedData = {
       { name: '생명공학', change: '-1.1%', isUp: false },
     ],
     heatmap: [
-      { name: 'NVDA', size: 300, change: 3.1 },
-      { name: 'MSFT', size: 290, change: -0.5 },
-      { name: 'AAPL', size: 280, change: 1.2 },
-      { name: 'AMZN', size: 200, change: 0.8 },
-      { name: 'GOOGL', size: 180, change: 0.5 },
-      { name: 'META', size: 160, change: -1.2 },
-      { name: 'AVGO', size: 120, change: -2.1 },
-      { name: 'TSLA', size: 110, change: 1.5 },
-      { name: 'COST', size: 85, change: 0.8 },
-      { name: 'AMD', size: 80, change: -1.5 },
-      { name: 'ASML', size: 80, change: 2.0 },
-      { name: 'NFLX', size: 75, change: 4.2 },
-      { name: 'QCOM', size: 75, change: 1.1 },
-      { name: 'PEP', size: 65, change: 0.1 },
-      { name: 'ADBE', size: 65, change: -0.9 },
-      { name: 'CSCO', size: 60, change: -0.5 },
-      { name: 'INTC', size: 55, change: -2.4 },
-      { name: 'AMAT', size: 50, change: 1.8 },
-      { name: 'INTU', size: 48, change: 0.7 },
-      { name: 'ISRG', size: 45, change: 1.3 },
+      { name: 'NVDA', symbol: 'NVDA', size: 300, change: 3.1 },
+      { name: 'MSFT', symbol: 'MSFT', size: 290, change: -0.5 },
+      { name: 'AAPL', symbol: 'AAPL', size: 280, change: 1.2 },
+      { name: 'AMZN', symbol: 'AMZN', size: 200, change: 0.8 },
+      { name: 'GOOGL', symbol: 'GOOGL', size: 180, change: 0.5 },
+      { name: 'META', symbol: 'META', size: 160, change: -1.2 },
+      { name: 'AVGO', symbol: 'AVGO', size: 120, change: -2.1 },
+      { name: 'TSLA', symbol: 'TSLA', size: 110, change: 1.5 },
+      { name: 'COST', symbol: 'COST', size: 85, change: 0.8 },
+      { name: 'AMD', symbol: 'AMD', size: 80, change: -1.5 },
+      { name: 'ASML', symbol: 'ASML', size: 80, change: 2.0 },
+      { name: 'NFLX', symbol: 'NFLX', size: 75, change: 4.2 },
+      { name: 'QCOM', symbol: 'QCOM', size: 75, change: 1.1 },
+      { name: 'PEP', symbol: 'PEP', size: 65, change: 0.1 },
+      { name: 'ADBE', symbol: 'ADBE', size: 65, change: -0.9 },
+      { name: 'CSCO', symbol: 'CSCO', size: 60, change: -0.5 },
+      { name: 'INTC', symbol: 'INTC', size: 55, change: -2.4 },
+      { name: 'AMAT', symbol: 'AMAT', size: 50, change: 1.8 },
+      { name: 'INTU', symbol: 'INTU', size: 48, change: 0.7 },
+      { name: 'ISRG', symbol: 'ISRG', size: 45, change: 1.3 },
     ]
   },
   '다우존스': {
@@ -95,26 +95,26 @@ const detailedData = {
       { name: '금융', change: '-0.3%', isUp: false },
     ],
     heatmap: [
-      { name: 'UNH', size: 110, change: 0.5 },
-      { name: 'GS', size: 100, change: -1.2 },
-      { name: 'MSFT', size: 95, change: -0.5 },
-      { name: 'HD', size: 90, change: 1.1 },
-      { name: 'CAT', size: 85, change: 2.3 },
-      { name: 'CRM', size: 80, change: -0.8 },
-      { name: 'MCD', size: 75, change: 0.4 },
-      { name: 'V', size: 75, change: 1.5 },
-      { name: 'AMGN', size: 70, change: 0.2 },
-      { name: 'IBM', size: 70, change: 1.4 },
-      { name: 'AXP', size: 65, change: 0.8 },
-      { name: 'BA', size: 60, change: -3.2 },
-      { name: 'TRV', size: 60, change: 0.2 },
-      { name: 'AAPL', size: 58, change: 1.2 },
-      { name: 'JPM', size: 55, change: 0.6 },
-      { name: 'WMT', size: 55, change: 0.4 },
-      { name: 'CVX', size: 50, change: -0.5 },
-      { name: 'JNJ', size: 48, change: -0.2 },
-      { name: 'PG', size: 45, change: 0.1 },
-      { name: 'DIS', size: 40, change: 1.0 },
+      { name: 'UNH', symbol: 'UNH', size: 110, change: 0.5 },
+      { name: 'GS', symbol: 'GS', size: 100, change: -1.2 },
+      { name: 'MSFT', symbol: 'MSFT', size: 95, change: -0.5 },
+      { name: 'HD', symbol: 'HD', size: 90, change: 1.1 },
+      { name: 'CAT', symbol: 'CAT', size: 85, change: 2.3 },
+      { name: 'CRM', symbol: 'CRM', size: 80, change: -0.8 },
+      { name: 'MCD', symbol: 'MCD', size: 75, change: 0.4 },
+      { name: 'V', symbol: 'V', size: 75, change: 1.5 },
+      { name: 'AMGN', symbol: 'AMGN', size: 70, change: 0.2 },
+      { name: 'IBM', symbol: 'IBM', size: 70, change: 1.4 },
+      { name: 'AXP', symbol: 'AXP', size: 65, change: 0.8 },
+      { name: 'BA', symbol: 'BA', size: 60, change: -3.2 },
+      { name: 'TRV', symbol: 'TRV', size: 60, change: 0.2 },
+      { name: 'AAPL', symbol: 'AAPL', size: 58, change: 1.2 },
+      { name: 'JPM', symbol: 'JPM', size: 55, change: 0.6 },
+      { name: 'WMT', symbol: 'WMT', size: 55, change: 0.4 },
+      { name: 'CVX', symbol: 'CVX', size: 50, change: -0.5 },
+      { name: 'JNJ', symbol: 'JNJ', size: 48, change: -0.2 },
+      { name: 'PG', symbol: 'PG', size: 45, change: 0.1 },
+      { name: 'DIS', symbol: 'DIS', size: 40, change: 1.0 },
     ]
   },
   '코스피': {
@@ -129,26 +129,26 @@ const detailedData = {
       { name: '금융', change: '+0.5%', isUp: true },
     ],
     heatmap: [
-      { name: '삼성전자', size: 450, change: 1.2 },
-      { name: 'SK하이닉스', size: 240, change: 3.5 },
-      { name: 'LG에너지솔루션', size: 150, change: -2.1 },
-      { name: '삼성바이오로직스', size: 110, change: 0.5 },
-      { name: '현대차', size: 110, change: 4.2 },
-      { name: '기아', size: 85, change: 2.8 },
-      { name: '셀트리온', size: 85, change: -1.5 },
-      { name: 'KB금융', size: 75, change: 1.1 },
-      { name: 'POSCO홀딩스', size: 70, change: -0.8 },
-      { name: 'NAVER', size: 65, change: -0.5 },
-      { name: '신한지주', size: 60, change: 0.8 },
-      { name: '현대모비스', size: 55, change: 1.5 },
-      { name: '삼성SDI', size: 55, change: -1.2 },
-      { name: '하나금융지주', size: 50, change: 0.6 },
-      { name: '카카오', size: 48, change: -0.7 },
-      { name: '포스코퓨처엠', size: 45, change: -1.8 },
-      { name: 'HD현대중공업', size: 45, change: 2.4 },
-      { name: '한화에어로스페이스', size: 42, change: 3.1 },
-      { name: '두산에너빌리티', size: 40, change: 1.9 },
-      { name: 'LG전자', size: 38, change: 0.5 },
+      { name: '삼성전자', symbol: '005930.KS', size: 450, change: 1.2 },
+      { name: 'SK하이닉스', symbol: '000660.KS', size: 240, change: 3.5 },
+      { name: 'LG에너지솔루션', symbol: '373220.KS', size: 150, change: -2.1 },
+      { name: '삼성바이오로직스', symbol: '207940.KS', size: 110, change: 0.5 },
+      { name: '현대차', symbol: '005380.KS', size: 110, change: 4.2 },
+      { name: '기아', symbol: '000270.KS', size: 85, change: 2.8 },
+      { name: '셀트리온', symbol: '068270.KS', size: 85, change: -1.5 },
+      { name: 'KB금융', symbol: '105560.KS', size: 75, change: 1.1 },
+      { name: 'POSCO홀딩스', symbol: '005490.KS', size: 70, change: -0.8 },
+      { name: 'NAVER', symbol: '035420.KS', size: 65, change: -0.5 },
+      { name: '신한지주', symbol: '055550.KS', size: 60, change: 0.8 },
+      { name: '현대모비스', symbol: '012330.KS', size: 55, change: 1.5 },
+      { name: '삼성SDI', symbol: '006400.KS', size: 55, change: -1.2 },
+      { name: '하나금융지주', symbol: '086790.KS', size: 50, change: 0.6 },
+      { name: '카카오', symbol: '035720.KS', size: 48, change: -0.7 },
+      { name: '포스코퓨처엠', symbol: '003670.KS', size: 45, change: -1.8 },
+      { name: 'HD현대중공업', symbol: '329180.KS', size: 45, change: 2.4 },
+      { name: '한화에어로스페이스', symbol: '012450.KS', size: 42, change: 3.1 },
+      { name: '두산에너빌리티', symbol: '034020.KS', size: 40, change: 1.9 },
+      { name: 'LG전자', symbol: '066570.KS', size: 38, change: 0.5 },
     ]
   },
   '코스닥': {
@@ -162,26 +162,26 @@ const detailedData = {
       { name: '반도체 소부장', change: '+1.2%', isUp: true },
     ],
     heatmap: [
-      { name: '알테오젠', size: 220, change: 4.2 },
-      { name: '에코프로비엠', size: 180, change: -3.5 },
-      { name: '에코프로', size: 140, change: -2.8 },
-      { name: 'HLB', size: 120, change: -1.5 },
-      { name: '리가켐바이오', size: 90, change: 2.5 },
-      { name: '엔켐', size: 85, change: 2.1 },
-      { name: '휴젤', size: 75, change: 1.8 },
-      { name: '클래시스', size: 70, change: 3.1 },
-      { name: '리노공업', size: 65, change: 1.5 },
-      { name: '삼천당제약', size: 60, change: -1.2 },
-      { name: '셀트리온제약', size: 58, change: -0.8 },
-      { name: 'HPSP', size: 55, change: 0.5 },
-      { name: '레인보우로보틱스', size: 50, change: -1.2 },
-      { name: '파마리서치', size: 48, change: 1.6 },
-      { name: '이오테크닉스', size: 45, change: 0.9 },
-      { name: '원익IPS', size: 42, change: -0.4 },
-      { name: '동진쎄미켐', size: 40, change: 1.1 },
-      { name: '에스엠', size: 38, change: -1.0 },
-      { name: 'JYP Ent.', size: 36, change: -0.6 },
-      { name: '펄어비스', size: 35, change: 0.3 },
+      { name: '알테오젠', symbol: '196170.KQ', size: 220, change: 4.2 },
+      { name: '에코프로비엠', symbol: '247540.KQ', size: 180, change: -3.5 },
+      { name: '에코프로', symbol: '086520.KQ', size: 140, change: -2.8 },
+      { name: 'HLB', symbol: '028300.KQ', size: 120, change: -1.5 },
+      { name: '리가켐바이오', symbol: '141080.KQ', size: 90, change: 2.5 },
+      { name: '엔켐', symbol: '348370.KQ', size: 85, change: 2.1 },
+      { name: '휴젤', symbol: '145020.KQ', size: 75, change: 1.8 },
+      { name: '클래시스', symbol: '214150.KQ', size: 70, change: 3.1 },
+      { name: '리노공업', symbol: '058470.KQ', size: 65, change: 1.5 },
+      { name: '삼천당제약', symbol: '000250.KQ', size: 60, change: -1.2 },
+      { name: '셀트리온제약', symbol: '068760.KQ', size: 58, change: -0.8 },
+      { name: 'HPSP', symbol: '403870.KQ', size: 55, change: 0.5 },
+      { name: '레인보우로보틱스', symbol: '277810.KQ', size: 50, change: -1.2 },
+      { name: '파마리서치', symbol: '214450.KQ', size: 48, change: 1.6 },
+      { name: '이오테크닉스', symbol: '039030.KQ', size: 45, change: 0.9 },
+      { name: '원익IPS', symbol: '240810.KQ', size: 42, change: -0.4 },
+      { name: '동진쎄미켐', symbol: '005290.KQ', size: 40, change: 1.1 },
+      { name: '에스엠', symbol: '041510.KQ', size: 38, change: -1.0 },
+      { name: 'JYP Ent.', symbol: '035900.KQ', size: 36, change: -0.6 },
+      { name: '펄어비스', symbol: '263750.KQ', size: 35, change: 0.3 },
     ]
   }
 }
@@ -667,17 +667,29 @@ export default function Dashboard() {
                   content={<TreemapCell />}
                   isAnimationActive={false}
                   onClick={(e) => {
-                    if (e && e.name) setSelectedItem({ name: e.name, symbol: e.symbol || e.name, value: String(e.price || '100') });
+                    if (e && e.name) {
+                      const symbol = e.symbol || HEATMAP_SYMBOL_MAP[e.name] || e.name;
+                      setSelectedItem({ name: e.name, symbol, value: String(e.price || '100') });
+                    }
                   }}
                 >
                   <RechartsTooltip 
                     content={({ payload }) => {
                       if (payload && payload.length) {
                         const data = payload[0].payload;
+                        const totalSize = (currentData.heatmap || []).reduce((sum, item) => sum + (Number(item.size) || 0), 0);
+                        const weightPct = totalSize > 0 && data.size ? ((data.size / totalSize) * 100).toFixed(1) : null;
                         return (
-                          <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>{data.name}</div>
-                            <div className={data.change > 0 ? 'text-positive' : 'text-negative'}>{data.change > 0 ? '+' : ''}{data.change}%</div>
+                          <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.5rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.25rem', fontSize: '0.9rem' }}>{data.name}</div>
+                            <div className={data.change > 0 ? 'text-positive' : 'text-negative'} style={{ fontWeight: '600' }}>
+                              {data.change > 0 ? '+' : ''}{data.change}%
+                            </div>
+                            {weightPct && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                시총 비중: <strong style={{ color: 'var(--text-color)' }}>{weightPct}%</strong>
+                              </div>
+                            )}
                           </div>
                         );
                       }
