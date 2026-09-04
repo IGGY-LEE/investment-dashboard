@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { LineChart, Line, ResponsiveContainer, Treemap, Tooltip as RechartsTooltip } from 'recharts'
+import { LineChart, Line, AreaChart, Area, YAxis, ResponsiveContainer, Treemap, Tooltip as RechartsTooltip } from 'recharts'
 import { RefreshCw } from 'lucide-react'
 import ChartModal from '../components/ChartModal'
 import MarketBriefingCard from '../components/MarketBriefingCard'
@@ -199,19 +199,21 @@ export default function Dashboard() {
   
   const [topIndices, setTopIndices] = useState([
     { name: '코스피', symbol: '^KS11', value: 2667.70, changeStr: '-0.30%', isUp: false, flash: null },
+    { name: '코스닥', symbol: '^KQ11', value: 790.00, changeStr: '-1.71%', isUp: false, flash: null },
     { name: 'S&P 500', symbol: '^GSPC', value: 5088.80, changeStr: '+1.20%', isUp: true, flash: null },
-    { name: '상해종합', symbol: '000001.SS', value: 2977.02, changeStr: '+0.55%', isUp: true, flash: null },
-    { name: '원/달러', symbol: 'KRW=X', value: 1332.50, changeStr: '+2.00%', isUp: true, flash: null },
     { name: '나스닥', symbol: '^IXIC', value: 15996.82, changeStr: '+1.55%', isUp: true, flash: null },
     { name: '다우존스', symbol: '^DJI', value: 39131.53, changeStr: '+0.16%', isUp: true, flash: null },
+    { name: '원/달러', symbol: 'KRW=X', value: 1332.50, changeStr: '+2.00%', isUp: true, flash: null },
+    { name: '상해종합', symbol: '000001.SS', value: 2977.02, changeStr: '+0.55%', isUp: true, flash: null },
     { name: '닛케이', symbol: '^N225', value: 39233.71, changeStr: '+2.10%', isUp: true, flash: null },
   ])
 
   const [marketCards, setMarketCards] = useState([
-    { name: 'S&P 500', symbol: '^GSPC', value: 5088.80, changeStr: '+1.20%', isUp: true, sparkline: [] },
-    { name: '나스닥 (NASDAQ)', symbol: '^IXIC', value: 15996.82, changeStr: '+1.55%', isUp: true, sparkline: [] },
-    { name: '다우존스 (Dow Jones)', symbol: '^DJI', value: 39131.53, changeStr: '+0.16%', isUp: true, sparkline: [] },
-    { name: '코스피 (KOSPI)', symbol: '^KS11', value: 2667.70, changeStr: '-0.30%', isUp: false, sparkline: [] },
+    { name: 'S&P 500', symbol: '^GSPC', value: 5088.80, changeStr: '+1.20%', isUp: true, sparkline: generateSparkline(true) },
+    { name: '나스닥 (NASDAQ)', symbol: '^IXIC', value: 15996.82, changeStr: '+1.55%', isUp: true, sparkline: generateSparkline(true) },
+    { name: '다우존스 (Dow Jones)', symbol: '^DJI', value: 39131.53, changeStr: '+0.16%', isUp: true, sparkline: generateSparkline(true) },
+    { name: '코스피 (KOSPI)', symbol: '^KS11', value: 2667.70, changeStr: '-0.30%', isUp: false, sparkline: generateSparkline(false) },
+    { name: '코스닥 (KOSDAQ)', symbol: '^KQ11', value: 790.00, changeStr: '-1.71%', isUp: false, sparkline: generateSparkline(false) },
   ])
 
   const [detailedDataState, setDetailedDataState] = useState(detailedData)
@@ -331,13 +333,23 @@ export default function Dashboard() {
   };
 
   const fetchSparklines = async () => {
-    for (const card of marketCards) {
-      const chart = await getChartData(card.symbol, '1d', '1mo');
-      if (isMountedRef.current && chart.length > 0) {
-        setMarketCards(prev => prev.map(p => 
-          p.symbol === card.symbol ? { ...p, sparkline: chart } : p
-        ));
+    try {
+      const results = await Promise.all(
+        marketCards.map(async card => {
+          const chart = await getChartData(card.symbol, '1d', '1mo');
+          return { symbol: card.symbol, chart };
+        })
+      );
+      if (isMountedRef.current) {
+        setMarketCards(prev => prev.map(p => {
+          const found = results.find(r => r.symbol === p.symbol);
+          return (found && found.chart && found.chart.length > 0) 
+            ? { ...p, sparkline: found.chart } 
+            : p;
+        }));
       }
+    } catch (err) {
+      console.error('Error fetching sparklines:', err);
     }
   };
 
@@ -430,25 +442,62 @@ export default function Dashboard() {
         </div>
       </div>
       
-      <div className="grid-4">
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', 
+        gap: '1rem', 
+        marginBottom: '1.5rem' 
+      }}>
         {marketCards.map((data, idx) => (
           <div 
             key={idx} 
             className="card clickable" 
-            style={{ marginBottom: '1rem', position: 'relative', overflow: 'hidden' }}
+            style={{ 
+              position: 'relative', 
+              overflow: 'hidden', 
+              padding: '1.25rem 1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: '115px'
+            }}
             onClick={() => setSelectedItem({ name: data.name, symbol: data.symbol, value: String(data.value) })}
           >
-            <div className="text-secondary" style={{ marginBottom: '0.25rem', fontSize: '0.875rem' }}>{data.name}</div>
-            <div className="text-xl">{data.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</div>
-            <div className={`badge ${data.isUp ? 'positive' : 'negative'}`} style={{ marginTop: '0.5rem' }}>
-              {data.changeStr}
+            <div>
+              <div className="text-secondary" style={{ marginBottom: '0.35rem', fontSize: '0.85rem', fontWeight: '500' }}>
+                {data.name}
+              </div>
+              <div className="text-xl" style={{ fontWeight: '700', letterSpacing: '-0.5px' }}>
+                {data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className={`badge ${data.isUp ? 'positive' : 'negative'}`} style={{ marginTop: '0.5rem', display: 'inline-flex' }}>
+                {data.changeStr}
+              </div>
             </div>
             
-            <div style={{ position: 'absolute', right: '1rem', bottom: '1rem', width: '80px', height: '40px' }}>
+            {/* 1개월 실시간 차트 변동성 스파크라인 */}
+            <div style={{ position: 'absolute', right: '0.75rem', bottom: '0.75rem', width: '95px', height: '46px' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.sparkline}>
-                  <Line type="monotone" dataKey="value" stroke={data.isUp ? 'var(--positive-color)' : 'var(--negative-color)'} strokeWidth={2} dot={false} isAnimationActive={false} />
-                </LineChart>
+                <AreaChart data={data.sparkline} margin={{ top: 2, bottom: 2, left: 1, right: 1 }}>
+                  <defs>
+                    <linearGradient id={`grad-spark-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={data.isUp ? 'var(--positive-color)' : 'var(--negative-color)'} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={data.isUp ? 'var(--positive-color)' : 'var(--negative-color)'} stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <YAxis 
+                    hide 
+                    domain={['dataMin', 'dataMax']} 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke={data.isUp ? 'var(--positive-color)' : 'var(--negative-color)'} 
+                    strokeWidth={2} 
+                    fill={`url(#grad-spark-${idx})`} 
+                    isAnimationActive={false} 
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
