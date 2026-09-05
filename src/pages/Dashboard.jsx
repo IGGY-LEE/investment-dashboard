@@ -5,6 +5,7 @@ import ChartModal from '../components/ChartModal'
 import MarketBriefingCard from '../components/MarketBriefingCard'
 import FearGreedGauge from '../components/FearGreedGauge'
 import TopMoversCard from '../components/TopMoversCard'
+import SurgingLeadersCard from '../components/SurgingLeadersCard'
 import { getQuotes, getChartData, getMarketBriefing, getFearGreedIndex } from '../api'
 
 const generateSparkline = (isUp) => {
@@ -582,6 +583,12 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* 당일 시장 주도주 & 급등 섹터 랭킹 카드 */}
+      <SurgingLeadersCard 
+        detailedDataState={detailedDataState}
+        onSelectStock={(stock) => setSelectedItem(stock)}
+      />
 
       <div className="flex-between" style={{ marginTop: '2rem', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2 className="page-title" style={{ margin: 0 }}>상세 분석</h2>
