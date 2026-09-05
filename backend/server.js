@@ -3,8 +3,9 @@ const cors = require('cors');
 require('dotenv').config();
 const YahooFinance = require('yahoo-finance2').default;
 
-// Apply Method 1: Spoof User-Agent
+// Apply Method 1: Spoof User-Agent & suppress survey notices
 const yahooFinance = new YahooFinance({
+  suppressNotices: ['yahooSurvey'],
   fetchOptions: {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
@@ -121,7 +122,7 @@ app.get('/api/quotes', async (req, res) => {
     if (process.env.TWELVE_DATA_API_KEY) {
       try {
         const tdSymbols = symbolList.map(mapToTwelveData).join(',');
-        const tdRes = await fetch(`https://api.twelvedata.com/quote?symbol=${tdSymbols}&apikey=${process.env.TWELVE_DATA_API_KEY}`);
+        const tdRes = await fetch(`https://api.twelvedata.com/quote?symbol=${tdSymbols}&apikey=${process.env.TWELVE_DATA_API_KEY}`, { signal: AbortSignal.timeout(3500) });
         const tdData = await tdRes.json();
         
         if (tdData.status !== 'error') {
@@ -183,7 +184,7 @@ app.get('/api/quotes', async (req, res) => {
       
       const scrapeGoogle = async (symbol) => {
         try {
-          const res = await fetch(`https://www.google.com/finance/quote/${mapToGoogle(symbol)}`);
+          const res = await fetch(`https://www.google.com/finance/quote/${mapToGoogle(symbol)}`, { signal: AbortSignal.timeout(3500) });
           if (!res.ok) return null;
           const html = await res.text();
           
@@ -1058,7 +1059,8 @@ app.get('/api/fear-greed', async (req, res) => {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
           'Accept': 'application/json, text/plain, */*',
           'Referer': 'https://edition.cnn.com/markets/fear-and-greed'
-        }
+        },
+        signal: AbortSignal.timeout(3500)
       });
       if (cnnRes.ok) {
         const json = await cnnRes.json();
