@@ -1,7 +1,8 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Compass, CalendarDays, TrendingUp, Pickaxe, Trophy, Banknote, Newspaper, Bitcoin, Layers, Briefcase, Puzzle, Search } from 'lucide-react'
+import { LayoutDashboard, Compass, CalendarDays, TrendingUp, Pickaxe, Trophy, Banknote, Newspaper, Bitcoin, Layers, Briefcase, Puzzle, Search, Sparkles, BarChart2 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
+import MarketOverview from './pages/MarketOverview'
 import Screener from './pages/Screener'
 import Strategy from './pages/Strategy'
 import Schedule from './pages/Schedule'
@@ -21,7 +22,8 @@ import { Navigate } from 'react-router-dom'
 import './index.css'
 
 const NAV_ITEMS = [
-  { path: '/', label: '대시보드', icon: <LayoutDashboard size={20} /> },
+  { path: '/', label: '대시보드 (AI 분석)', icon: <Sparkles size={20} /> },
+  { path: '/market', label: '실시간 시황', icon: <BarChart2 size={20} /> },
   { path: '/screener', label: '종목 스크리너', icon: <Search size={20} /> },
   { path: '/strategy', label: 'AI 투자 전략', icon: <Compass size={20} /> },
   { path: '/schedule', label: '주요 일정', icon: <CalendarDays size={20} /> },
@@ -129,6 +131,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/market" element={<MarketOverview />} />
             <Route path="/screener" element={<Screener />} />
             <Route path="/login" element={<Login />} />
             <Route path="/strategy" element={<PrivateRoute><Strategy /></PrivateRoute>} />
